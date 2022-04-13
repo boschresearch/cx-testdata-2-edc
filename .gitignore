@@ -1,0 +1,5 @@
+*.json
+*.db
+.devcontainer
+.vscode
+__pycache__
