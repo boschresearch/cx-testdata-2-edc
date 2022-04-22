@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  registry:
+    build:
+      context: .
+      dockerfile: ./docker/registry/Dockerfile
+      args:
+        JAR: registry-1.3.0-SNAPSHOT.jar
+    ports:
+      - "4243:4243" # default
+      - "5013:8090"
+    environment:
+      #- "JAVA_OPTS=-Dspring.profiles.active=local"
+      - "SPRING_PROFILES_ACTIVE=local,basic"

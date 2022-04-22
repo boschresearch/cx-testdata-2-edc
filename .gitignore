@@ -3,3 +3,7 @@
 .devcontainer
 .vscode
 __pycache__
+openapi/src
+*.swp
+logs/
+tmp/
