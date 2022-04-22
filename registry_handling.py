@@ -13,7 +13,7 @@ from aas.registry.models.submodel_descriptor import SubmodelDescriptor
 from aas.registry.models.protocol_information import ProtocolInformation
 from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
-from dependencies import CX_SCHEMA_PREFIX, DB_CX_ITEMS, get_db_item, idshort_for_schema, iterate_cx_items, path_for_schema, unique_id, SCHEMA_SERIAL_PART_TYPIZATION, REGISTRY_BASE_URL
+from dependencies import CX_SCHEMA_PREFIX, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_PREFIX, get_db_item, idshort_for_schema, iterate_cx_items, path_for_schema, unique_id, SCHEMA_SERIAL_PART_TYPIZATION, REGISTRY_BASE_URL
 from edc_handling import upsert_aas_id, upsert_sm_id
 
 def lookup_by_globalAssetId(globalAssetId: str):
@@ -88,6 +88,20 @@ def prepare_submodel_descriptor_list(item: dict, aas_id: str, endpoint_base_url:
             sm_descriptors.append(sm)
     return sm_descriptors
 
+def prepare_specific_asset_ids(item):
+    """
+    Find the SerialPartTypization entry from the item and use the localIdentifiers
+    to fill the specificAssetIds for the AAS Registry entry
+    """
+    for key in list(item.keys()):
+        if key.startswith(SCHEMA_SERIAL_PART_TYPIZATION_PREFIX):
+            sp = item.get(key, None)
+            if len(sp) != 1:
+                raise Exception("Length of {key} must be exactly 1.")
+            if sp:
+                return [IdentifierKeyValuePair(**x) for x in sp[0].get('localIdentifiers', []) ] # transform to the typed version of it
+    return None
+
 
 def upsert_registry_entry(item: dict, endpoint_base_url: str):
     """
@@ -104,11 +118,12 @@ def upsert_registry_entry(item: dict, endpoint_base_url: str):
         # register a new AAS
         aas_id = upsert_aas_id(cx_id=cxId)
         submodels = prepare_submodel_descriptor_list(item=item, aas_id=aas_id, endpoint_base_url=endpoint_base_url)
+        specific_asset_ids = prepare_specific_asset_ids(item=item)
         aas_descriptor = AssetAdministrationShellDescriptor(
             identification=aas_id,
             id_short=cxId,
             global_asset_id=Reference(value=[cxId]),
-            specific_asset_ids=[IdentifierKeyValuePair(**x) for x in item.get('localIdentifiers', []) ], # transform to the typed version of it
+            specific_asset_ids=specific_asset_ids,
             submodel_descriptors=submodels
         )
         data = aas_descriptor.dict()
