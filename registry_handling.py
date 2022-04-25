@@ -5,8 +5,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+import os
 import json
 import requests
+from oauthlib.oauth2 import BackendApplicationClient
+from requests_oauthlib import OAuth2Session
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from aas.registry.models.identifier_key_value_pair import IdentifierKeyValuePair
 from aas.registry.models.submodel_descriptor import SubmodelDescriptor
@@ -15,6 +18,29 @@ from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
 from dependencies import CX_SCHEMA_PREFIX, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_PREFIX, get_db_item, idshort_for_schema, iterate_cx_items, path_for_schema, unique_id, SCHEMA_SERIAL_PART_TYPIZATION, REGISTRY_BASE_URL
 from edc_handling import upsert_aas_id, upsert_sm_id
+
+CLIENT_ID_REGISTRY = os.getenv('CLIENT_ID_REGISTRY', '')
+CLIENT_SECRET_REGISTRY = os.getenv('CLIENT_SECRET_REGISTRY', '')
+TOKEN_URL_REGISTRY = os.getenv('TOKEN_URL_REGISTRY', '')
+
+session = None
+
+def get_requests_session():
+    global session #
+    if session:
+        return session
+
+    if CLIENT_ID_REGISTRY and CLIENT_SECRET_REGISTRY:
+        # https://requests-oauthlib.readthedocs.io/en/latest/oauth2_workflow.html#backend-application-flow
+        client = BackendApplicationClient(client_id=CLIENT_ID_REGISTRY)
+        s = OAuth2Session(client=client)
+        token = s.fetch_token(token_url=TOKEN_URL_REGISTRY, client_secret=CLIENT_SECRET_REGISTRY)
+        # TODO: have a look at expires_at and check with refresh token
+        session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
+    else:
+        session = requests.Session()
+    
+    return session
 
 def lookup_by_globalAssetId(globalAssetId: str):
     """
@@ -29,7 +55,7 @@ def lookup_by_globalAssetId(globalAssetId: str):
     query = {
         'assetIds': query1_str
     }
-    r = requests.get(f"{REGISTRY_BASE_URL}/lookup/shells", params=query)
+    r = get_requests_session().get(f"{REGISTRY_BASE_URL}/lookup/shells", params=query)
     if not r.ok:
         return None
     aas_ids = r.json()
@@ -128,7 +154,7 @@ def upsert_registry_entry(item: dict, endpoint_base_url: str):
         )
         data = aas_descriptor.dict()
         print(json.dumps(data, indent=4))
-        r = requests.post(f"{REGISTRY_BASE_URL}/registry/shell-descriptors", json=data)
+        r = get_requests_session().post(f"{REGISTRY_BASE_URL}/registry/shell-descriptors", json=data)
         if not r.ok:
             print(r.content, file=sys.stderr)
             return None
@@ -147,7 +173,7 @@ def delete_registry_entry(cx_id: str):
     if not aas_id:
         print(f"Could not find and delete AAS for cx_id (globalAssetId): {cx_id}")
         return False
-    r = requests.delete(f"{REGISTRY_BASE_URL}/registry/shell-descriptors/{aas_id}")
+    r = get_requests_session().delete(f"{REGISTRY_BASE_URL}/registry/shell-descriptors/{aas_id}")
     if not r.ok:
         print(r.content)
         print(f"Could not delete registry entry for aas_id: {aas_id}")
