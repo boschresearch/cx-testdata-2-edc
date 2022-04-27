@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 import os
 import shelve
 from fastapi import FastAPI, HTTPException, Query
@@ -34,32 +35,36 @@ def check_params(content: str, extent: str):
     if extent != 'withBlobValue':
         raise HTTPException(status_code=501, detail="Parameter 'extent' MUST be 'withBlobValue'.")
 
-@app.get(SERIAL_PART_TYPIZATION_ENDPOINT_PATH + '/{catenaXId}/submodel', )
+@app.get(SERIAL_PART_TYPIZATION_ENDPOINT_PATH + '/{catenaXId}', )
 async def get_serial_part_typization(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
-    check_params(content=content, extent=extent)
+    print(f"get_serial_part_typization catenaXId: {catenaXId}")
+    #check_params(content=content, extent=extent)
     try:
         item = get_item(catenaXId=catenaXId)
-        sm_data = get_sm_for_item(item, schema=SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING)[0]
+        print(sm_data)
         return sm_data
     except Exception:
         return {}
 
-@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}/submodel')
+@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}')
 async def get_assembly_part_relationship(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
-    check_params(content=content, extent=extent)
+    print(f"get_assembly_part_relationship catenaXId: {catenaXId}")
+    #check_params(content=content, extent=extent)
     try:
         item = get_item(catenaXId=catenaXId)
-        sm_data = get_sm_for_item(item, schema=SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING)[0]
         return sm_data
     except Exception:
         return {}
 
-@app.get(MATERIAL_FOR_RECYCLING_PATH + '/{catenaXId}/submodel')
+@app.get(MATERIAL_FOR_RECYCLING_PATH + '/{catenaXId}')
 async def get_material_for_recycling(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
-    check_params(content=content, extent=extent)
+    print(f"get_material_for_recycling catenaXId: {catenaXId}")
+    #check_params(content=content, extent=extent)
     try:
         item = get_item(catenaXId=catenaXId)
-        sm_data = get_sm_for_item(item, schema=SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING)[0]
         return sm_data
     except Exception:
         return {}

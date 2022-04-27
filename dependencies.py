@@ -123,7 +123,7 @@ def delete_db_item(key: str, dbname = DB_CX_ITEMS):
     return True
 
 def delete_db_all(dbname: str = DB_CX_ITEMS):
-    keys = get_db_keys()
+    keys = get_db_keys(dbname=dbname)
     for key in keys:
         delete_db_item(key=key, dbname=dbname)
 

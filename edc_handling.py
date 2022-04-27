@@ -105,7 +105,7 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
         "dataAddress": {
             "properties": {
                 "type": "HttpData",
-                "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + upsert_aas_id(cx_id=cx_id)
+                "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
             }
         }
     }
