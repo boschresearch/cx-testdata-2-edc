@@ -16,12 +16,9 @@ from aas.registry.models.submodel_descriptor import SubmodelDescriptor
 from aas.registry.models.protocol_information import ProtocolInformation
 from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
-from dependencies import CX_SCHEMA_PREFIX, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_PREFIX, get_db_item, idshort_for_schema, iterate_cx_items, path_for_schema, unique_id, SCHEMA_SERIAL_PART_TYPIZATION, REGISTRY_BASE_URL
+from dependencies import CLIENT_ID_REGISTRY, CLIENT_SECRET_REGISTRY, CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, TOKEN_URL_REGISTRY, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, REGISTRY_BASE_URL
 from edc_handling import upsert_aas_id, upsert_sm_id
 
-CLIENT_ID_REGISTRY = os.getenv('CLIENT_ID_REGISTRY', '')
-CLIENT_SECRET_REGISTRY = os.getenv('CLIENT_SECRET_REGISTRY', '')
-TOKEN_URL_REGISTRY = os.getenv('TOKEN_URL_REGISTRY', '')
 
 session = None
 
@@ -63,54 +60,58 @@ def lookup_by_globalAssetId(globalAssetId: str):
         return None
     return aas_ids[0]
 
-def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str):
+def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str):
     """
     # {{providerControlPlaneDockerInternal}}/{{providerBpn}}/{{digitalTwinId}}-{{digitalTwinSubmodelId}}
     """
-    return f"providerControlPlaneDockerInternal/providerBpn/{aas_id}-{sm_id}"
+    return f"{PROVIDER_CONTROL_PLANE_BASE_URL}/{bpn}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
 
-def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, endpoint_base_url: str):
+def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str):
     """
     Prepares a Submodel
     """
     path = path_for_schema(schema=schema)
     sm_id = upsert_sm_id(cx_id=cx_id, schema=schema)
-    edc_endpoint = prepare_edc_submodel_endpoint_address(aas_id=aas_id, sm_id=sm_id)
+    edc_endpoint = prepare_edc_submodel_endpoint_address(aas_id=aas_id, sm_id=sm_id, bpn=bpn)
+    endpoints = [
+        Endpoint(
+            interface='SUBMODEL-1.0RC02', #TODO: why RC02?
+            protocol_information=ProtocolInformation(
+                endpoint_address=edc_endpoint,
+                endpointProtocol="IDS/ECLIPSE DATASPACE CONNECTOR",
+                endpointProtocolVersion="0.0.1-SNAPSHOT"
+            )
+        )]
+    if ENDPOINT_BASE_URL_EXTERNAL:
+        endpoints.append(
+            Endpoint(
+                interface='SUBMODEL-1.0RC02', #TODO: why RC02?
+                protocolInformation=ProtocolInformation(
+                    endpoint_address= ENDPOINT_BASE_URL_EXTERNAL + path + '/' + cx_id + '/submodel?content=value&extent=withBlobValue'
+                )
+            )
+        )
+        
     sm = SubmodelDescriptor(
         identification=sm_id,
         id_short=idshort_for_schema(schema=schema),
         semantic_id=Reference(
             value=[schema]
         ),
-        endpoints=[
-            Endpoint(
-                interface='SUBMODEL-1.0RC02',
-                protocol_information=ProtocolInformation(
-                    endpoint_address=edc_endpoint,
-                    endpointProtocol="IDS/ECLIPSE DATASPACE CONNECTOR",
-                    endpointProtocolVersion="0.0.1-SNAPSHOT"
-                )
-            ),
-            Endpoint(
-                interface='http',
-                protocolInformation=ProtocolInformation(
-                    endpoint_address= endpoint_base_url + path + '/' + cx_id
-                )
-            )
-        ]
+        endpoints=endpoints,
     )
     return sm
 
 
-def prepare_submodel_descriptor_list(item: dict, aas_id: str, endpoint_base_url: str):
+def prepare_submodel_descriptor_list(item: dict, aas_id: str, bpn: str):
     """
     Prepares a list of Submodels from a given item
     """
     cx_id = item.get('catenaXId', None)
     sm_descriptors = []
     for key in list(item.keys()):
-        if key.startswith(CX_SCHEMA_PREFIX):
-            sm = prepare_submodel_descriptor(cx_id=cx_id, schema=key, aas_id=aas_id, endpoint_base_url=endpoint_base_url)
+        if CX_SCHEMA_LOOKUP_STRING in key:
+            sm = prepare_submodel_descriptor(cx_id=cx_id, schema=key, aas_id=aas_id, bpn=bpn)
             sm_descriptors.append(sm)
     return sm_descriptors
 
@@ -119,17 +120,15 @@ def prepare_specific_asset_ids(item):
     Find the SerialPartTypization entry from the item and use the localIdentifiers
     to fill the specificAssetIds for the AAS Registry entry
     """
-    for key in list(item.keys()):
-        if key.startswith(SCHEMA_SERIAL_PART_TYPIZATION_PREFIX):
-            sp = item.get(key, None)
-            if len(sp) != 1:
-                raise Exception("Length of {key} must be exactly 1.")
-            if sp:
-                return [IdentifierKeyValuePair(**x) for x in sp[0].get('localIdentifiers', []) ] # transform to the typed version of it
+    sp = get_first_match(item=item, key_match=SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, default_return=None)
+    if len(sp) != 1:
+        raise Exception("Length must be exactly 1.")
+    if sp:
+        return [IdentifierKeyValuePair(**x) for x in sp[0].get('localIdentifiers', []) ] # transform to the typed version of it
     return None
 
 
-def upsert_registry_entry(item: dict, endpoint_base_url: str):
+def upsert_registry_entry(item: dict, bpn: str):
     """
     Register the given item in the registry if it doesn't exist yet. Existence check by the
     catenaXId as the globalAssetId.
@@ -143,7 +142,7 @@ def upsert_registry_entry(item: dict, endpoint_base_url: str):
     if not ga_id_lookup:
         # register a new AAS
         aas_id = upsert_aas_id(cx_id=cxId)
-        submodels = prepare_submodel_descriptor_list(item=item, aas_id=aas_id, endpoint_base_url=endpoint_base_url)
+        submodels = prepare_submodel_descriptor_list(item=item, aas_id=aas_id, bpn=bpn)
         specific_asset_ids = prepare_specific_asset_ids(item=item)
         aas_descriptor = AssetAdministrationShellDescriptor(
             identification=aas_id,
@@ -153,17 +152,18 @@ def upsert_registry_entry(item: dict, endpoint_base_url: str):
             submodel_descriptors=submodels
         )
         data = aas_descriptor.dict()
-        print(json.dumps(data, indent=4))
+        #print(json.dumps(data, indent=4))
         r = get_requests_session().post(f"{REGISTRY_BASE_URL}/registry/shell-descriptors", json=data)
         if not r.ok:
-            print(r.content, file=sys.stderr)
+            print(f"Could not create AAS. status_code: {r.status_code} content: {r.content}")
             return None
         result = r.json()
         aas_created = AssetAdministrationShellDescriptor(**result)
+        print(f"AAS created for cx_id: {cxId} AAS ID: {aas_created.identification} ")
         return aas_created
     else:
-        # udpate case
-        pass
+        # already exists
+        print(f"AAS already exists for cx_id: {cxId} AAS ID: {ga_id_lookup}")
 
 def delete_registry_entry(cx_id: str):
     """
@@ -181,9 +181,9 @@ def delete_registry_entry(cx_id: str):
     return True
     
 
-def upsert_registry_entry_from_cx_items(endpoint_base_url: str):
+def upsert_registry_entry_from_cx_items(bpn: str):
     for item in iterate_cx_items():
-        upsert_registry_entry(item, endpoint_base_url=endpoint_base_url)
+        upsert_registry_entry(item, bpn=bpn)
 
 def delete_registry_entry_from_cx_items():
     for cx_item in iterate_cx_items():

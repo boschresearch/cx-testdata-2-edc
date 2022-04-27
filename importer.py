@@ -13,21 +13,19 @@ import shelve
 
 from registry_handling import delete_registry_entry_from_cx_items, upsert_registry_entry_from_cx_items
 from edc_handling import delete_assets_from_cx_items, upsert_assets_from_cx_items
-from dependencies import SCHEMA_SERIAL_PART_TYPIZATION, REGISTRY_BASE_URL, DB_CX_ITEMS, delete_db_all
+from dependencies import REGISTRY_BASE_URL, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING, delete_db_all, get_first_match
 
 
 parser = argparse.ArgumentParser(description="Import from test data set (JSON)")
 parser.add_argument('input_filename',
         help='Input file. needs to be in format of TestDataContainer/1.0.0')
-parser.add_argument('--list-manufacturers', action=argparse.BooleanOptionalAction,
+parser.add_argument('--list-manufacturers', action='store_true',
         help='List available ManufactuerID s')
 parser.add_argument('--import-for',
         help='Import data for the given ManufactuerID')
-parser.add_argument('--disable-registry-entry', action=argparse.BooleanOptionalAction,
+parser.add_argument('--disable-registry-entry', action='store_true',
         help='Disables automatic registering at the AAS registry. (relevant env: REGISTRY_BASE_URL)')
-parser.add_argument('--endpoint-base-url', default='http://localhost:8080',
-        help='The base URL with which the AAS are registered in the AAS registry.')
-parser.add_argument('--delete',action=argparse.BooleanOptionalAction, default=False,
+parser.add_argument('--delete',action='store_true', default=False,
         help='Deletes items from EDC and Registry. Can not be combined with import, but also needs the Manufacturer ID.')
 
 
@@ -49,11 +47,11 @@ with open(args.input_filename, 'r', encoding='iso-8859-1') as f:
     filedata = f.read()
 data = json.loads(filedata)
 
-testdata = data.get('https://catenax.com/schema/TestDataContainer/1.0.0', [])
+testdata = get_first_match(data, key_match=SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING, default_return=[])
 
 if args.list_manufacturers:
     for item in testdata:
-        part_typizations = item.get(SCHEMA_SERIAL_PART_TYPIZATION, [])
+        part_typizations = get_first_match(item=item, key_match=SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, default_return=[])
         for aspect in part_typizations:
             for localid in aspect['localIdentifiers']:
                 if localid.get('key', '') == 'ManufacturerID':
@@ -66,7 +64,7 @@ if args.import_for:
 
     
     for item in testdata:
-        part_typizations = item.get(SCHEMA_SERIAL_PART_TYPIZATION, [])  # TODO: we assume that every part has this aspect!
+        part_typizations = get_first_match(item=item, key_match=SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, default_return=[])  # TODO: we assume that every part has this aspect!
         cx_id = item.get('catenaXId', '')
         for aspect in part_typizations:
             for localid in aspect['localIdentifiers']:
@@ -80,6 +78,6 @@ if args.delete:
     delete_registry_entry_from_cx_items()
     delete_db_all(dbname=DB_CX_ITEMS)
 else:
-    upsert_assets_from_cx_items(args.endpoint_base_url)
-    upsert_registry_entry_from_cx_items(endpoint_base_url=args.endpoint_base_url)
+    upsert_assets_from_cx_items()
+    upsert_registry_entry_from_cx_items(bpn=args.import_for)
 

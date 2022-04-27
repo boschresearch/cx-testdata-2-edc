@@ -9,13 +9,15 @@ from uuid import uuid4
 import requests
 import json
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
-from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, MATERIAL_FOR_RECYCLING_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_PREFIX, SCHEMA_MATERIAL_FOR_RECYCLING_PREFIX, SCHEMA_SERIAL_PART_TYPIZATION, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SCHEMA_SERIAL_PART_TYPIZATION_PREFIX, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema
+from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY
 
 
 def prepare_edc_headers():
-    return {
-        "X-Api-Key": "123456"
-    }
+    headers = {}
+    if EDC_API_KEY:
+        headers['X-Api-Key'] = EDC_API_KEY
+
+    return headers
 
 def prepare_aas_id_key_local(cx_id: str):
     """
@@ -72,12 +74,17 @@ def upsert_aas_id(cx_id: str):
     return aas_id
 
 def get_asset(asset_id: str):
-    r = requests.get(f"{EDC_BASE_URL}/assets/{asset_id}")
+    r = requests.get(f"{EDC_BASE_URL}/assets/{asset_id}", headers=prepare_edc_headers())
     if r.ok:
-        return r.json()
+        try:
+            return r.json()
+        except:
+            # in provider-control-plane version 0.0.1 it seems the return is successful, but with no content
+            # in case there is no asset. catenax-at-home/getting-started-guide version.
+            pass
     return None
 
-def create_asset(cx_id: str, asset_id: str, schema: str, endpoint_base_url: str):
+def create_asset(cx_id: str, asset_id: str, schema: str):
     """
     Create the asset in the EDC.
     Returns the asset information that we used to create it, because EDC itself would not return this.
@@ -98,7 +105,7 @@ def create_asset(cx_id: str, asset_id: str, schema: str, endpoint_base_url: str)
         "dataAddress": {
             "properties": {
                 "type": "HttpData",
-                "endpoint": endpoint_base_url + path + "/" + upsert_aas_id(cx_id=cx_id)
+                "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + upsert_aas_id(cx_id=cx_id)
             }
         }
     }
@@ -106,10 +113,11 @@ def create_asset(cx_id: str, asset_id: str, schema: str, endpoint_base_url: str)
     if not r.ok:
         print(r.content)
         return None
+    print(f"EDC asset created for cx_id: {cx_id} asset_id: {asset_id}")
     return data    
 
 
-def upsert_asset(cx_id:str, schema:str, endpoint_base_url: str):
+def upsert_asset(cx_id:str, schema:str):
     """
     We consider cx_id and schema together are unique. That means, it is NOT allowed to have multiple items for 1 schema (currently a list)
     """
@@ -120,14 +128,14 @@ def upsert_asset(cx_id:str, schema:str, endpoint_base_url: str):
 
     existing_asset_id = get_asset(asset_id=asset_id)
     if existing_asset_id:
+        print(f"EDC asset already exists for cx_id: {cx_id} asset_id: {asset_id}")
         # and don't forget the policy
         upsert_policy(asset_id=asset_id)
 
         return existing_asset_id
 
     # or we create a new one in EDC
-    asset = create_asset(cx_id=cx_id, asset_id=asset_id, schema=schema, endpoint_base_url=endpoint_base_url)
-    print(asset)
+    asset = create_asset(cx_id=cx_id, asset_id=asset_id, schema=schema)
     # and don't forget the policy
     upsert_policy(asset_id=asset_id)
 
@@ -180,12 +188,12 @@ def upsert_contract_definition(policy_id: str):
 
 
 
-def upsert_assets_from_cx_items(endpoint_base_url: str):
+def upsert_assets_from_cx_items():
     """
     Loop through the list of local ID mappings and create an EDC asset if it does not exist yet.
     """
     for item in iterate_cx_items_schemas():
-        upsert_asset(cx_id=item['cx_id'], schema=item['schema'], endpoint_base_url=endpoint_base_url)
+        upsert_asset(cx_id=item['cx_id'], schema=item['schema'])
 
 def delete_assets_from_cx_items():
     """
@@ -201,7 +209,6 @@ def delete_asset(cx_id: str, schema: str):
 
     r = requests.delete(f"{EDC_BASE_URL}/assets/{asset_id}", headers=prepare_edc_headers())
     if not r.ok:
-        print(r.content)
-        print(f"Could not delete asset with id: {asset_id}")
+        print(f"Could not delete EDC asset with id: {asset_id}")
         return False
     return True

@@ -6,9 +6,9 @@
 
 import os
 import shelve
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from dependencies import DB_CX_ITEMS, ASSEMBLY_PART_RELATIONSHIP_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_PREFIX, SCHEMA_MATERIAL_FOR_RECYCLING_PREFIX, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, MATERIAL_FOR_RECYCLING_PATH, SCHEMA_SERIAL_PART_TYPIZATION_PREFIX
+from dependencies import DB_CX_ITEMS, ASSEMBLY_PART_RELATIONSHIP_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING, SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, MATERIAL_FOR_RECYCLING_PATH, get_first_match
 
 
 app = FastAPI(title="CX Testdata Submodel Endpoint Server for R1")
@@ -26,47 +26,55 @@ def get_item(catenaXId:str):
         return item
 
 def get_sm_for_item(item, schema: str):
-    for key in item.keys():
-        if key.startswith(schema):
-            return item[key]
-    return None
+    return get_first_match(item=item, key_match=schema, default_return=None)
 
-@app.get(SERIAL_PART_TYPIZATION_ENDPOINT_PATH + '/{catenaXId}')
-async def get_serial_part_typization(catenaXId: str):
+def check_params(content: str, extent: str):
+    if content != 'value':
+        raise HTTPException(status_code=501, detail="Parameter 'content' MUST be 'value'.")
+    if extent != 'withBlobValue':
+        raise HTTPException(status_code=501, detail="Parameter 'extent' MUST be 'withBlobValue'.")
+
+@app.get(SERIAL_PART_TYPIZATION_ENDPOINT_PATH + '/{catenaXId}/submodel', )
+async def get_serial_part_typization(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
+    check_params(content=content, extent=extent)
     try:
         item = get_item(catenaXId=catenaXId)
-        sm_data = get_sm_for_item(item, schema=SCHEMA_SERIAL_PART_TYPIZATION_PREFIX)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING)
         return sm_data
     except Exception:
         return {}
 
-@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}')
-async def get_assembly_part_relationship(catenaXId: str):
+@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}/submodel')
+async def get_assembly_part_relationship(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
+    check_params(content=content, extent=extent)
     try:
         item = get_item(catenaXId=catenaXId)
-        sm_data = get_sm_for_item(item, schema=SCHEMA_ASSEMBLY_PART_RELATIONSHIP_PREFIX)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING)
         return sm_data
     except Exception:
         return {}
 
-@app.get(MATERIAL_FOR_RECYCLING_PATH + '/{catenaXId}')
-async def get_material_for_recycling(catenaXId: str):
+@app.get(MATERIAL_FOR_RECYCLING_PATH + '/{catenaXId}/submodel')
+async def get_material_for_recycling(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
+    check_params(content=content, extent=extent)
     try:
         item = get_item(catenaXId=catenaXId)
-        sm_data = get_sm_for_item(item, schema=SCHEMA_MATERIAL_FOR_RECYCLING_PREFIX)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING)
         return sm_data
     except Exception:
         return {}
 
-@app.on_event('startup')
+#@app.on_event('startup')
 def server_startup():
-    with shelve.open(DB_CX_ITEMS, 'r') as db:
+    print('server_startup()')
+    with shelve.open(DB_CX_ITEMS, 'c') as db: # c to create if doesn't exist
         keys = list(db.keys())
         print(keys)
 
 
 if __name__ == '__main__':
+    server_startup() # only run once, not for every worker
     import uvicorn
     port = os.getenv('PORT', '8080')
-    workers = os.getenv('WORKERS', '5')
+    workers = os.getenv('WORKERS', '3')
     uvicorn.run("main:app", host="0.0.0.0", port=int(port), workers=int(workers), reload=False)
