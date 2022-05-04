@@ -6,32 +6,36 @@
 
 import os
 import shelve
+from typing import Any
 from uuid import uuid4
-from pydantic import BaseSettings
+from pydantic import BaseSettings, PrivateAttr, Field
 
 
 class Settings(BaseSettings):
     # typically external
-    provider_control_plane_base_url: str = 'http://provider-control-plane:8181'
+    provider_control_plane_base_url: str = 'http://provider-control-plane:8282'
     # used for EDC -> endpoint communication
-    endpoint_base_url_internal: str = 'http://localhost:8080'
+    endpoint_base_url_internal: str = 'http://testdata2edc:8080'
     # if given add direct (non-EDC) endpoint for it
     endpoint_base_url_external: str = ''
-    registry_base_url: str = 'http://registry:4243'
+    registry_base_url: str = 'http://registry-service:4243'
     consumer_aas_proxy_base_url: str = 'http://consumer-aas-proxy-service:4245'
-    edc_base_url: str = 'http://provider-control-plane:9191/api'
+    edc_base_url: str = 'http://provider-control-plane:9193/api/v1/data'
     edc_api_key: str = ''
     # oauth
     client_id_registry: str = ''
-    client_secret_registry: str = ''
+    client_secret_registry: str = Field(default='', exclude=True)
     token_url_registry: str = ''
+    # wrapper / proxy
+    wrapper_basic_auth_user: str = 'someuser'
+    wrapper_basic_auth_password: str = Field(default='somepassword', exclude=True)
 
     class Config:
         env_file = os.getenv('ENV_FILE', '.env') # if ENV_FILE is not set, we read env vars from .env by default
 
 settings: Settings = Settings()
 # print the settings that we actually use, but leave out the secret field
-s_str = settings.json(exclude={'client_secret_registry'}, indent=4)
+s_str = settings.json(indent=4)
 print('settings:')
 print(s_str)
 
@@ -42,11 +46,6 @@ ENDPOINT_BASE_URL_EXTERNAL = settings.endpoint_base_url_external
 REGISTRY_BASE_URL = settings.registry_base_url
 EDC_BASE_URL = settings.edc_base_url
 EDC_API_KEY = settings.edc_api_key
-
-CLIENT_ID_REGISTRY = settings.client_id_registry
-CLIENT_SECRET_REGISTRY = settings.client_secret_registry
-TOKEN_URL_REGISTRY = settings.token_url_registry
-
 
 SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING = '/schema/AssemblyPartRelationship/'
 SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING = '/schema/SerialPartTypization/'

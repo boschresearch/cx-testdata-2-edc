@@ -13,7 +13,7 @@ import shelve
 
 from registry_handling import delete_registry_entry_from_cx_items, upsert_registry_entry_from_cx_items
 from edc_handling import delete_assets_from_cx_items, upsert_assets_from_cx_items
-from dependencies import REGISTRY_BASE_URL, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING, delete_db_all, get_first_match
+from dependencies import DB_ID_MAPPINGS, DB_POLICY_ID_MAPPINGS, REGISTRY_BASE_URL, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING, delete_db_all, get_first_match
 
 
 parser = argparse.ArgumentParser(description="Import from test data set (JSON)")
@@ -77,6 +77,8 @@ if args.delete:
     delete_assets_from_cx_items()
     delete_registry_entry_from_cx_items()
     delete_db_all(dbname=DB_CX_ITEMS)
+    delete_db_all(dbname=DB_ID_MAPPINGS)
+    delete_db_all(dbname=DB_POLICY_ID_MAPPINGS)
 else:
     upsert_assets_from_cx_items()
     upsert_registry_entry_from_cx_items(bpn=args.import_for)

@@ -16,7 +16,7 @@ from aas.registry.models.submodel_descriptor import SubmodelDescriptor
 from aas.registry.models.protocol_information import ProtocolInformation
 from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
-from dependencies import CLIENT_ID_REGISTRY, CLIENT_SECRET_REGISTRY, CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, TOKEN_URL_REGISTRY, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings
+from dependencies import CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings
 from edc_handling import upsert_aas_id, upsert_sm_id
 
 
@@ -33,11 +33,11 @@ def get_requests_session():
     if session:
         return session
 
-    if CLIENT_ID_REGISTRY and CLIENT_SECRET_REGISTRY:
+    if settings.client_id_registry and settings.client_secret_registry:
         # https://requests-oauthlib.readthedocs.io/en/latest/oauth2_workflow.html#backend-application-flow
-        client = BackendApplicationClient(client_id=CLIENT_ID_REGISTRY)
+        client = BackendApplicationClient(client_id=settings.client_id_registry)
         s = OAuth2Session(client=client)
-        token = s.fetch_token(token_url=TOKEN_URL_REGISTRY, client_secret=CLIENT_SECRET_REGISTRY)
+        token = s.fetch_token(token_url=settings.token_url_registry, client_secret=settings.client_secret_registry)
         # TODO: have a look at expires_at and check with refresh token
         #session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
         # to also work with the aas-proxy
