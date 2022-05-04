@@ -16,11 +16,17 @@ from aas.registry.models.submodel_descriptor import SubmodelDescriptor
 from aas.registry.models.protocol_information import ProtocolInformation
 from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
-from dependencies import CLIENT_ID_REGISTRY, CLIENT_SECRET_REGISTRY, CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, TOKEN_URL_REGISTRY, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, REGISTRY_BASE_URL
+from dependencies import CLIENT_ID_REGISTRY, CLIENT_SECRET_REGISTRY, CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, TOKEN_URL_REGISTRY, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings
 from edc_handling import upsert_aas_id, upsert_sm_id
 
 
 session = None
+
+def prepare_auth_headers(access_token: str):
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    return headers
 
 def get_requests_session():
     global session #
@@ -33,17 +39,17 @@ def get_requests_session():
         s = OAuth2Session(client=client)
         token = s.fetch_token(token_url=TOKEN_URL_REGISTRY, client_secret=CLIENT_SECRET_REGISTRY)
         # TODO: have a look at expires_at and check with refresh token
-        session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
+        #session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
+        # to also work with the aas-proxy
+        headers = prepare_auth_headers(token['access_token'])
+        session = requests.Session()
+        session.headers.update(headers)
     else:
         session = requests.Session()
     
     return session
 
-def lookup_by_globalAssetId(globalAssetId: str):
-    """
-    Find a AAS by the globalAssetId
-    Everying else than 1 exact match returns None (for now)
-    """
+def lookup_by_globalAssetIds_all(globalAssetId: str):
     query1 = [{
             'key': 'globalAssetId',
             'value': globalAssetId,
@@ -52,13 +58,39 @@ def lookup_by_globalAssetId(globalAssetId: str):
     query = {
         'assetIds': query1_str
     }
-    r = get_requests_session().get(f"{REGISTRY_BASE_URL}/lookup/shells", params=query)
+    r = get_requests_session().get(f"{settings.registry_base_url}/lookup/shells", params=query)
     if not r.ok:
         return None
     aas_ids = r.json()
+    return aas_ids
+
+def lookup_by_globalAssetId(globalAssetId: str):
+    """
+    Find a AAS by the globalAssetId
+    Everying else than 1 exact match returns None (for now)
+    """
+    aas_ids = lookup_by_globalAssetIds_all(globalAssetId=globalAssetId)
     if len(aas_ids) != 1:
         return None
     return aas_ids[0]
+
+
+def lookup_by_aas_id(aas_id: str):
+    r = get_requests_session().get(f"{settings.registry_base_url}/registry/shell-descriptors/{aas_id}")
+    if not r.ok:
+        print(r.content)
+        return None
+    return r.json()
+
+def get_all():
+    session = get_requests_session()
+    r = session.get(f"{settings.registry_base_url}/registry/shell-descriptors")
+    if not r.ok:
+        print(r.content)
+        return None
+    j = r.json()
+    return j['items']
+
 
 def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str):
     """
@@ -153,7 +185,7 @@ def upsert_registry_entry(item: dict, bpn: str):
         )
         data = aas_descriptor.dict()
         #print(json.dumps(data, indent=4))
-        r = get_requests_session().post(f"{REGISTRY_BASE_URL}/registry/shell-descriptors", json=data)
+        r = get_requests_session().post(f"{settings.registry_base_url}/registry/shell-descriptors", json=data)
         if not r.ok:
             print(f"Could not create AAS. status_code: {r.status_code} content: {r.content}")
             return None
@@ -173,7 +205,7 @@ def delete_registry_entry(cx_id: str):
     if not aas_id:
         print(f"Could not find and delete AAS for cx_id (globalAssetId): {cx_id}")
         return False
-    r = get_requests_session().delete(f"{REGISTRY_BASE_URL}/registry/shell-descriptors/{aas_id}")
+    r = get_requests_session().delete(f"{settings.registry_base_url}/registry/shell-descriptors/{aas_id}")
     if not r.ok:
         print(r.content)
         print(f"Could not delete registry entry for aas_id: {aas_id}")

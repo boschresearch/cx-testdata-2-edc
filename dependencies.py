@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # if given add direct (non-EDC) endpoint for it
     endpoint_base_url_external: str = ''
     registry_base_url: str = 'http://registry:4243'
+    consumer_aas_proxy_base_url: str = 'http://consumer-aas-proxy-service:4245'
     edc_base_url: str = 'http://provider-control-plane:9191/api'
     edc_api_key: str = ''
     # oauth

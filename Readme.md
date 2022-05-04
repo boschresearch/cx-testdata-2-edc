@@ -72,3 +72,25 @@ python main.py
 - Instead of importer script, think about upload interface
 - The submodules catena-x-edc and tractusx are not used by default. Nothing to worry about and no need to checkout those submodules
 
+
+# Testing
+
+## Consumer
+```
+docker-compose up consumer-control-plane consumer-data-plane api-wrapper consumer-aas-proxy-service
+```
+
+## Provider
+```
+
+```
+
+## Fetch data
+```
+./cli.py search all # Print the first 10 or so items from the registry
+# to specify another file with environment variables, eg. client_id / client_secret you can run:
+ENV_FILE=.env.INT ./cli.py search all # Print the first 10 or so items from the registry
+# or export for the terminal session
+export ENV_FILE=.env.INT
+
+```
