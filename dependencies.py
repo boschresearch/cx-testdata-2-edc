@@ -74,11 +74,11 @@ def path_for_schema(schema: str):
 
 def idshort_for_schema(schema: str):
     if SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING in schema:
-        return 'SerialPartTypization'
+        return 'serialPartTypization'
     if SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING in schema:
-        return 'AssemblyPartRelationship'
+        return 'assemblyPartRelationship'
     if SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING in schema:
-        return 'MaterialForRecycling'
+        return 'materialForRecycling'
     return None
 
 def get_first_match(item, key_match: str, default_return = None):

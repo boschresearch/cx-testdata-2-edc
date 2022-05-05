@@ -85,17 +85,17 @@ def fetch_for(aas_id: str, sm_type: str):
 @fetch.command('SerialPartTypization')
 @click.argument('aas_id')
 def fetch_serial_part_typization(aas_id):
-    fetch_for(aas_id=aas_id, sm_type='SerialPartTypization')
+    fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
 
 @fetch.command('AssemblyPartRelationship')
 @click.argument('aas_id')
 def fetch_assembly_part_relationship(aas_id):
-    fetch_for(aas_id=aas_id, sm_type='AssemblyPartRelationship')
+    fetch_for(aas_id=aas_id, sm_type='assemblyPartRelationship')
 
 @fetch.command('MaterialForRecycling')
 @click.argument('aas_id')
 def fetch_material_for_recycling(aas_id):
-    fetch_for(aas_id=aas_id, sm_type='MaterialForRecycling')
+    fetch_for(aas_id=aas_id, sm_type='materialForRecycling')
 
 if __name__ == '__main__':
     cli()
