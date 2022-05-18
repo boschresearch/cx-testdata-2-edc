@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # if given add direct (non-EDC) endpoint for it
     endpoint_base_url_external: str = ''
     registry_base_url: str = 'http://registry-service:4243'
-    consumer_aas_proxy_base_url: str = 'http://consumer-aas-proxy-service:4245'
+    consumer_aas_proxy_base_url: str = 'http://consumer-aas-proxy:4245'
     edc_base_url: str = 'http://provider-control-plane:9193/api/v1/data'
     edc_api_key: str = ''
     # oauth
@@ -70,7 +70,7 @@ def path_for_schema(schema: str):
         return ASSEMBLY_PART_RELATIONSHIP_PATH
     if SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING in schema:
         return MATERIAL_FOR_RECYCLING_PATH
-    return None
+    return '/notimplementedyet' # default
 
 def idshort_for_schema(schema: str):
     if SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING in schema:
@@ -79,7 +79,7 @@ def idshort_for_schema(schema: str):
         return 'assemblyPartRelationship'
     if SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING in schema:
         return 'materialForRecycling'
-    return None
+    return 'notimplementedyet' # default
 
 def get_first_match(item, key_match: str, default_return = None):
     """
