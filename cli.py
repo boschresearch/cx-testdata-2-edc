@@ -4,6 +4,7 @@ from email.policy import default
 import sys
 import time
 import json
+from uuid import uuid4
 import jq
 from urllib.parse import urlparse
 from textwrap import indent
@@ -11,6 +12,7 @@ from urllib import request
 import click
 import requests
 from requests.auth import HTTPBasicAuth
+from edc_handling import prepare_edc_headers
 import registry_handling
 from dependencies import settings
 
@@ -87,6 +89,41 @@ def search_all(aas_proxy):
     for aas in all:
         print(json.dumps(aas, indent=4))
         input("")
+
+# edc
+@cli.group(help='Fetch from EDC')
+def edc():
+    pass
+
+@edc.command('negotiate')
+@click.argument('connector_endpoint')
+@click.argument('edc_asset_id')
+def edc_negotiate(connector_endpoint, edc_asset_id):
+    data = {
+        'connectorId': 'XXX',
+        'connectorAddress': connector_endpoint,
+        'protocol': 'ids-multipart',
+        'offer': {
+            'offerId': str(uuid4()),
+            'assetId': edc_asset_id,
+            'policy': {
+                'permissions': [
+                    {
+                        'target': edc_asset_id,
+                        'action': {
+                            'type': 'USE'
+                        }
+                    }
+                ],
+                '@type': {
+                    '@policytype': 'set'
+                }
+            }
+        }
+    }
+    url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractdefinitions"
+    r = requests.post(url, json=data, headers=prepare_edc_headers())
+    print(r.content)
 
 # fetch
 @cli.group(help='Fetch endpoint data')
