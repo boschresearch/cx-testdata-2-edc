@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from email.policy import default
 import sys
 import time
 import json
@@ -12,10 +13,13 @@ import registry_handling
 from dependencies import settings
 
 
-# we change our default registry endpoint to gro through the aas proxy
-# if you want to go directly to the registry, set the according env to ''
-if settings.consumer_aas_proxy_base_url:
-    settings.registry_base_url = settings.consumer_aas_proxy_base_url
+def use_proxy():
+    # we change our default registry endpoint to gro through the aas proxy
+    # if you want to go directly to the registry, set the according env to ''
+    if settings.consumer_aas_proxy_base_url:
+        print(f"Old registry_base_url: {settings.registry_base_url}")
+        settings.registry_base_url = settings.consumer_aas_proxy_base_url
+        print(f"New registry_base_url: {settings.registry_base_url}")
 
 print(json.dumps(settings.dict(), indent=4))
 
@@ -28,22 +32,31 @@ def search():
     pass
 
 @search.command('aas')
+@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
-def search_aas(aas_id):
+def search_aas(aas_id, aas_proxy):
     print(aas_id)
+    if aas_proxy:
+        use_proxy()
     aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
     print(json.dumps(aas, indent=4))
 
 @search.command('asset')
+@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('global_asset_id')
-def search_asset(global_asset_id):
+def search_asset(global_asset_id, aas_proxy):
     print(global_asset_id)
+    if aas_proxy:
+        use_proxy()
     aas_ids = registry_handling.lookup_by_globalAssetIds_all(global_asset_id)
     for aas_id in aas_ids:
         print(aas_id)
 
 @search.command('all')
-def search_all():
+@click.option('-p', '--aas-proxy', default=False, is_flag=True)
+def search_all(aas_proxy):
+    if aas_proxy:
+        use_proxy()
     all = registry_handling.get_all()
     for aas in all:
         print(json.dumps(aas, indent=4))
@@ -96,6 +109,11 @@ def fetch_assembly_part_relationship(aas_id):
 @click.argument('aas_id')
 def fetch_material_for_recycling(aas_id):
     fetch_for(aas_id=aas_id, sm_type='materialForRecycling')
+
+@fetch.command('EdcAssetId')
+@click.argument('edc_asset_id')
+def fetch_edc_asset(edc_asset_id):
+    url = f"{settings.consumer_control_plane_url}/api/v1/data/contractnegotiations"
 
 if __name__ == '__main__':
     cli()
