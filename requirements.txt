@@ -6,6 +6,7 @@ click==8.1.2
 fastapi==0.75.1
 h11==0.13.0
 idna==3.3
+jq==1.2.2
 oauthlib==3.2.0
 pydantic==1.9.0
 python-dotenv==0.20.0

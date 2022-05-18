@@ -4,6 +4,8 @@ from email.policy import default
 import sys
 import time
 import json
+import jq
+from urllib.parse import urlparse
 from textwrap import indent
 from urllib import request
 import click
@@ -33,13 +35,37 @@ def search():
 
 @search.command('aas')
 @click.option('-p', '--aas-proxy', default=False, is_flag=True)
+@click.option('-ea', '--print-edc-assets', default=False, is_flag=True)
 @click.argument('aas_id')
-def search_aas(aas_id, aas_proxy):
+def search_aas(aas_id, aas_proxy, print_edc_assets):
     print(aas_id)
     if aas_proxy:
         use_proxy()
     aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
-    print(json.dumps(aas, indent=4))
+    if print_edc_assets:
+        print_out_edc_assets(aas)
+    else:
+        print(json.dumps(aas, indent=4))
+
+def print_out_edc_assets(aas_obj):
+    """
+    Prints out the EDC asset_id from a given AAS object
+    """
+    for sm in jq.compile(".submodelDescriptors[].endpoints[0].protocolInformation.endpointAddress").input(aas_obj):
+        #print(sm)
+        edc_info = extract_edc_information(sm)
+        print(edc_info)
+
+def extract_edc_information(submodel_descriptor_endpoint_url: str):
+    """
+    Extracts the asset_id from a given URL
+    """
+    url = urlparse(submodel_descriptor_endpoint_url)
+    bpn = url.path.split('/')[1]
+    edc_asset_id = url.path.split('/')[2]
+    connector_endpoint = url.scheme + '://' + url.netloc
+    return {'bpn': bpn, 'edc_asset_id': edc_asset_id, 'connector_ednpoint': connector_endpoint}
+
 
 @search.command('asset')
 @click.option('-p', '--aas-proxy', default=False, is_flag=True)
