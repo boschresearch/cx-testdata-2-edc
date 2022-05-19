@@ -100,7 +100,7 @@ def edc():
 @click.argument('edc_asset_id')
 def edc_negotiate(connector_endpoint, edc_asset_id):
     data = {
-        'connectorId': 'XXX',
+        'connectorId': 'urn:connector:control.cxdev.germanywestcentral.cloudapp.azure.com',
         'connectorAddress': connector_endpoint,
         'protocol': 'ids-multipart',
         'offer': {
@@ -109,6 +109,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
             'policy': {
                 'permissions': [
                     {
+                        "edctype": "dataspaceconnector:permission",
                         'target': edc_asset_id,
                         'action': {
                             'type': 'USE'
@@ -121,8 +122,23 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
             }
         }
     }
-    url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractdefinitions"
+    #url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractdefinitions"
+    url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractnegotiations"
     r = requests.post(url, json=data, headers=prepare_edc_headers())
+    if not r.ok:
+        print(f"Could not init negotiations. Error: {r.content}")
+        sys.exit(-1)
+    j = r.json()
+    negotiation_id = j['id']
+
+    url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractnegotiations/{negotiation_id}"
+    while(True):
+        r = requests.get(url, headers=prepare_edc_headers())
+        j = r.json()
+        print(json.dumps(j, indent=4))
+        time.sleep(2)
+
+
     print(r.content)
 
 # fetch
@@ -144,8 +160,13 @@ def get_endpoint_for(aas, endpoint_type: str):
             return sm['endpoints'][0]['protocolInformation']['endpointAddress']
     return None
 
-def fetch_for(aas_id: str, sm_type: str):
+def fetch_for(aas_id: str, sm_type: str, aas_proxy):
+    if aas_proxy:
+        use_proxy()
     aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+    if not aas:
+        print(f"Could not find aas for aas_id: {aas_id}")
+        sys.exit(-1)
     url = get_endpoint_for(aas=aas, endpoint_type=sm_type)
     start = time.time()
     r = requests.get(url, auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password))
@@ -159,19 +180,22 @@ def fetch_for(aas_id: str, sm_type: str):
     print(json.dumps(j, indent=4))
 
 @fetch.command('SerialPartTypization')
+@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
-def fetch_serial_part_typization(aas_id):
-    fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
+def fetch_serial_part_typization(aas_id, aas_proxy):
+    fetch_for(aas_id=aas_id, sm_type='serialPartTypization', aas_proxy=aas_proxy)
 
 @fetch.command('AssemblyPartRelationship')
+@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
-def fetch_assembly_part_relationship(aas_id):
-    fetch_for(aas_id=aas_id, sm_type='assemblyPartRelationship')
+def fetch_assembly_part_relationship(aas_id, aas_proxy):
+    fetch_for(aas_id=aas_id, sm_type='assemblyPartRelationship', aas_proxy=aas_proxy)
 
 @fetch.command('MaterialForRecycling')
+@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
-def fetch_material_for_recycling(aas_id):
-    fetch_for(aas_id=aas_id, sm_type='materialForRecycling')
+def fetch_material_for_recycling(aas_id, aas_proxy):
+    fetch_for(aas_id=aas_id, sm_type='materialForRecycling', aas_proxy=aas_proxy)
 
 @fetch.command('EdcAssetId')
 @click.argument('edc_asset_id')
