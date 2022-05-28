@@ -15,6 +15,7 @@ from requests.auth import HTTPBasicAuth
 from edc_handling import prepare_edc_headers
 import registry_handling
 from dependencies import settings
+import importer
 
 
 def use_proxy():
@@ -205,6 +206,40 @@ def fetch_material_for_recycling(aas_id, aas_proxy):
 @click.argument('edc_asset_id')
 def fetch_edc_asset(edc_asset_id):
     url = f"{settings.consumer_control_plane_url}/api/v1/data/contractnegotiations"
+
+#####
+# testdata management
+####
+
+@cli.group(help='Manage Testdata files')
+def testdata():
+    pass
+
+@testdata.command('bpns', help='List all BPNs from the given testdata file')
+@click.argument('testdata_file')
+def list_bpns(testdata_file):
+    data = importer.get_testdata_from_file(testdata_file)
+    bpns = importer.get_manufacturers(testdata=data)
+    print(bpns)
+
+@testdata.command('cxids', help='List all CX IDs for a given BPN from the given testdata file')
+@click.option('-a', '--show-aas-id', default=False, is_flag=True)
+@click.option('-s', '--show-serial-part-typization', default=False, is_flag=True)
+@click.argument('testdata_file')
+@click.argument('BPN')
+def list_cxids(testdata_file, bpn, show_aas_id, show_serial_part_typization):
+    data = importer.get_testdata_from_file(testdata_file)
+    for item in importer.iterate_bpn_aspects(testdata=data, bpn=bpn):
+        cxid = item.get('catenaXId', '')
+        print(cxid)
+        aas_id = None
+        if show_aas_id or show_serial_part_typization:
+            aas_id = registry_handling.lookup_by_globalAssetId(globalAssetId=cxid)
+        if show_aas_id:
+            print(f"aas_id: {aas_id}")
+        if show_serial_part_typization:
+            fetch_for(aas_id=aas_id, sm_type='serialPartTypization', aas_proxy=True)
+
 
 if __name__ == '__main__':
     cli()
