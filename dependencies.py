@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     endpoint_base_url_external: str = ''
     registry_base_url: str = 'http://registry-service:4243'
     consumer_aas_proxy_base_url: str = 'http://consumer-aas-proxy:4245'
+    consumer_control_plane_base_url: str = 'http://consumer-control-plane:9193'
     edc_base_url: str = 'http://provider-control-plane:9193/api/v1/data'
     edc_api_key: str = ''
     # oauth
