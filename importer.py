@@ -57,6 +57,7 @@ if args.list_manufacturers:
                 if localid.get('key', '') == 'ManufacturerID':
                     manufacturers.add(localid.get('value', ''))
     print(manufacturers)
+    sys.exit(0)
 
 if args.import_for:
     manufacturer = args.import_for
