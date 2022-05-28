@@ -99,8 +99,15 @@ def edc():
 @click.argument('connector_endpoint')
 @click.argument('edc_asset_id')
 def edc_negotiate(connector_endpoint, edc_asset_id):
+
+    url = f"{settings.consumer_control_plane_base_url}/api/v1/data/control/catalog?provider=http://cxdev.germanywestcentral.cloudapp.azure.com:8185"
+    #url = f"{settings.consumer_control_plane_base_url}/api/v1/data/catalog?providerUrl=http://cxdev.germanywestcentral.cloudapp.azure.com:8185"
+    r = requests.get(url, headers=prepare_edc_headers())
+    j = r.json()
+    print(json.dumps(j, indent=4))
+
     data = {
-        'connectorId': 'urn:connector:control.cxdev.germanywestcentral.cloudapp.azure.com',
+        'connectorId': 'urn:connector:control.cxtesting.germanywestcentral.cloudapp.azure.com',
         'connectorAddress': connector_endpoint,
         'protocol': 'ids-multipart',
         'offer': {
@@ -115,10 +122,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
                             'type': 'USE'
                         }
                     }
-                ],
-                '@type': {
-                    '@policytype': 'set'
-                }
+                ]
             }
         }
     }
