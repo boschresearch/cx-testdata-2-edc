@@ -46,7 +46,7 @@ def iterate_bpn_aspects(testdata, bpn):
         cx_id = item.get('catenaXId', '')
         for aspect in part_typizations:
             for localid in aspect['localIdentifiers']:
-                if (localid.get('key', '') == 'ManufacturerID') and (localid.get('value', '') == bpn):
+                if (localid.get('key', '').lower() == 'manufacturerid') and (localid.get('value', '') == bpn):
                     yield item
 
 
