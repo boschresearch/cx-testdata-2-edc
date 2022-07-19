@@ -13,7 +13,7 @@ import shelve
 
 from registry_handling import delete_registry_entry_from_cx_items, upsert_registry_entry_from_cx_items
 from edc_handling import delete_assets_from_cx_items, upsert_assets_from_cx_items
-from dependencies import DB_ID_MAPPINGS, DB_POLICY_ID_MAPPINGS, REGISTRY_BASE_URL, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING, delete_db_all, get_first_match
+from dependencies import DB_ID_MAPPINGS, DB_POLICY_ID_MAPPINGS, REGISTRY_BASE_URL, DB_CX_ITEMS, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING, delete_db_all, get_first_match, SCHEMA_AAS_LOOKUP_STRING
 
 def get_testdata_from_file(filename):
     # read the data
@@ -63,6 +63,8 @@ if __name__ == '__main__':
             help='Disables automatic registering at the AAS registry. (relevant env: REGISTRY_BASE_URL)')
     parser.add_argument('--delete',action='store_true', default=False,
             help='Deletes items from EDC and Registry. Can not be combined with import, but also needs the Manufacturer ID.')
+    parser.add_argument('--max-counter', default=1000,
+            help='Limits number of items to be imported. Reason: 50-Assets-EDC-Bug (each aspect is 1 Asset!). Recommended: 5')
 
 
     args = parser.parse_args()
@@ -90,10 +92,22 @@ if __name__ == '__main__':
         manufacturer = args.import_for
         db_items = {}
 
+        counter = 0
+        counter_max = int(args.max_counter)
         for item in iterate_bpn_aspects(testdata=testdata, bpn=manufacturer):
+            # remove unsued aspects to not run over the 50 assets catalog problem
+            for x in list(item.keys()):
+                if SCHEMA_AAS_LOOKUP_STRING in x:
+                    del item[x]
+            counter = counter + 1
+            if counter > counter_max:
+                print(f"counter_max reached. Not adding more items: {counter_max}")
+                break
             with shelve.open(DB_CX_ITEMS) as db:
                 cx_id = item.get('catenaXId', '')
                 db[cx_id] = item
+        if counter >= 50:
+            print(f"Warning: More than 50 items. Could be a problem with EDC catalog bug that not all assets are found by consumers!")
 
     # either delete OR create, not both at the same time - for now     
     if args.delete:
