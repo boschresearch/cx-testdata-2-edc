@@ -121,8 +121,6 @@ def upsert_asset(cx_id:str, schema:str):
     """
     We consider cx_id and schema together are unique. That means, it is NOT allowed to have multiple items for 1 schema (currently a list)
     """
-    sm_id_local = prepare_submodel_id_local(cx_id=cx_id, schema=schema)
-
     sm_id = upsert_sm_id(cx_id=cx_id, schema=schema)
     asset_id = prepare_asset_id(cx_id=cx_id, submodel_id=sm_id)
 
