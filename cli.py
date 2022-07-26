@@ -7,8 +7,6 @@ import json
 from uuid import uuid4
 import jq
 from urllib.parse import urlparse
-from textwrap import indent
-from urllib import request
 import click
 import requests
 from requests.auth import HTTPBasicAuth
@@ -174,7 +172,14 @@ def fetch_for(aas_id: str, sm_type: str, aas_proxy):
         sys.exit(-1)
     url = get_endpoint_for(aas=aas, endpoint_type=sm_type)
     start = time.time()
-    r = requests.get(url, auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password))
+    url_parts = urlparse(url)
+    path_parts = url_parts.path.split('/')
+    path = str.join('/', path_parts[2:])
+    #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{path_parts[1]}"
+    #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
+    wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
+
+    r = requests.get(wrapper_url, auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password))
     end = time.time()
     duration = end - start
     print(f"call execution time: {duration}")
@@ -206,6 +211,30 @@ def fetch_material_for_recycling(aas_id, aas_proxy):
 @click.argument('edc_asset_id')
 def fetch_edc_asset(edc_asset_id):
     url = f"{settings.consumer_control_plane_url}/api/v1/data/contractnegotiations"
+
+
+#####
+# fetch via api-wrapper directly
+#####
+@fetch.command('api-wrapper')
+@click.argument('connector_url')
+@click.argument('edc_asset_id')
+def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id):
+    # needs api-wrapper endpoint from config
+    params = {
+        'content': 'value',
+        'extent': 'withBlobValue',
+        'provider-connector-url': connector_url
+    }
+    url = f"{settings.api_wrapper_base_url}/{edc_asset_id}/submodel"
+    print(f"fetch_edc_asssubUrlet_via_wrapper: {url} \n params: {params}")
+    r = requests.get(
+        url,
+        auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password),
+        params=params,
+    )
+    j = r.json()
+    print(print(json.dumps(j, indent=4)))
 
 #####
 # testdata management
