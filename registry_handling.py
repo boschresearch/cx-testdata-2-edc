@@ -82,9 +82,15 @@ def lookup_by_aas_id(aas_id: str):
         return None
     return r.json()
 
-def get_all():
+def get_all(page_size: int = 10, page: int = 1):
+    """
+    """
     session = get_requests_session()
-    r = session.get(f"{settings.registry_base_url}/registry/shell-descriptors")
+    params = {
+        'page': page,
+        'pageSize': page_size
+    }
+    r = session.get(f"{settings.registry_base_url}/registry/shell-descriptors", params=params)
     if not r.ok:
         print(r.content)
         return None
