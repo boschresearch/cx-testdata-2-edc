@@ -78,7 +78,7 @@ def lookup_by_globalAssetId(globalAssetId: str):
 def lookup_by_aas_id(aas_id: str):
     r = get_requests_session().get(f"{settings.registry_base_url}/registry/shell-descriptors/{aas_id}")
     if not r.ok:
-        print(r.content)
+        print(f"Could not fetch AAS content for AAS ID: {aas_id} Reason:{r.reason} Content: {r.content}")
         return None
     return r.json()
 
