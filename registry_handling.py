@@ -18,9 +18,10 @@ from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
 from dependencies import CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings
 from edc_handling import upsert_aas_id, upsert_sm_id
-
+from datetime import datetime, timedelta
 
 session = None
+token_expires_ts = None
 
 def prepare_auth_headers(access_token: str):
     headers = {
@@ -30,15 +31,19 @@ def prepare_auth_headers(access_token: str):
 
 def get_requests_session():
     global session #
+    global token_expires_ts
     if session:
-        return session
+        if token_expires_ts and token_expires_ts > datetime.now():
+            #only return existing session expires_in is still in the future
+            return session
 
     if settings.client_id_registry and settings.client_secret_registry:
         # https://requests-oauthlib.readthedocs.io/en/latest/oauth2_workflow.html#backend-application-flow
         client = BackendApplicationClient(client_id=settings.client_id_registry)
         s = OAuth2Session(client=client)
         token = s.fetch_token(token_url=settings.token_url_registry, client_secret=settings.client_secret_registry)
-        # TODO: have a look at expires_at and check with refresh token
+        expires_in_seconds = int(token['expires_in']) - 5 # reduce by 5 seconds buffer
+        token_expires_ts = datetime.now() + timedelta(seconds=expires_in_seconds)
         #session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
         # to also work with the aas-proxy
         headers = prepare_auth_headers(token['access_token'])
