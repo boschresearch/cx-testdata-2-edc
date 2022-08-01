@@ -111,7 +111,7 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
     }
     r = requests.post(f"{EDC_BASE_URL}/assets", json=data, headers=prepare_edc_headers())
     if not r.ok:
-        print(r.content)
+        print(f"Could not create EDC asset. Reason: {r.reason} Content: {r.content}")
         return None
     print(f"EDC asset created for cx_id: {cx_id} asset_id: {asset_id}")
     return data    
