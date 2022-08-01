@@ -16,14 +16,6 @@ from dependencies import settings
 import importer
 
 
-def use_proxy():
-    # we change our default registry endpoint to gro through the aas proxy
-    # if you want to go directly to the registry, set the according env to ''
-    if settings.consumer_aas_proxy_base_url:
-        print(f"Old registry_base_url: {settings.registry_base_url}")
-        settings.registry_base_url = settings.consumer_aas_proxy_base_url
-        print(f"New registry_base_url: {settings.registry_base_url}")
-
 print(json.dumps(settings.dict(), indent=4))
 
 @click.group(help='Helper tool to use aas-proxy')
@@ -35,13 +27,10 @@ def search():
     pass
 
 @search.command('aas')
-@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.option('-ea', '--print-edc-assets', default=False, is_flag=True)
 @click.argument('aas_id')
-def search_aas(aas_id, aas_proxy, print_edc_assets):
+def search_aas(aas_id, print_edc_assets):
     print(aas_id)
-    if aas_proxy:
-        use_proxy()
     aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
     if print_edc_assets:
         print_out_edc_assets(aas)
@@ -69,21 +58,15 @@ def extract_edc_information(submodel_descriptor_endpoint_url: str):
 
 
 @search.command('asset')
-@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('global_asset_id')
-def search_asset(global_asset_id, aas_proxy):
+def search_asset(global_asset_id):
     print(global_asset_id)
-    if aas_proxy:
-        use_proxy()
     aas_ids = registry_handling.lookup_by_globalAssetIds_all(global_asset_id)
     for aas_id in aas_ids:
         print(aas_id)
 
 @search.command('all')
-@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 def search_all(aas_proxy):
-    if aas_proxy:
-        use_proxy()
     all = registry_handling.get_all()
     for aas in all:
         print(json.dumps(aas, indent=4))
@@ -163,10 +146,17 @@ def get_endpoint_for(aas, endpoint_type: str):
             return sm['endpoints'][0]['protocolInformation']['endpointAddress']
     return None
 
-def fetch_for(aas_id: str, sm_type: str, aas_proxy):
-    if aas_proxy:
-        use_proxy()
+def fetch_for(aas_id: str, sm_type: str):
+    """
+    given AAS ID
+    """
     aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+    return fetch_for_aas(aas=aas, sm_type=sm_type)
+
+def fetch_for_aas(aas, sm_type: str):
+    """
+    given AAS (not only aas id)
+    """
     if not aas:
         print(f"Could not find aas for aas_id: {aas_id}")
         sys.exit(-1)
@@ -190,19 +180,17 @@ def fetch_for(aas_id: str, sm_type: str, aas_proxy):
     print(json.dumps(j, indent=4))
 
 @fetch.command('SerialPartTypization')
-@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
-def fetch_serial_part_typization(aas_id, aas_proxy):
-    fetch_for(aas_id=aas_id, sm_type='serialPartTypization', aas_proxy=aas_proxy)
+def fetch_serial_part_typization(aas_id):
+    data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
+    print(json.dumps(data, indent=4))
 
 @fetch.command('AssemblyPartRelationship')
-@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
 def fetch_assembly_part_relationship(aas_id, aas_proxy):
     fetch_for(aas_id=aas_id, sm_type='assemblyPartRelationship', aas_proxy=aas_proxy)
 
 @fetch.command('MaterialForRecycling')
-@click.option('-p', '--aas-proxy', default=False, is_flag=True)
 @click.argument('aas_id')
 def fetch_material_for_recycling(aas_id, aas_proxy):
     fetch_for(aas_id=aas_id, sm_type='materialForRecycling', aas_proxy=aas_proxy)
@@ -267,7 +255,7 @@ def list_cxids(testdata_file, bpn, show_aas_id, show_serial_part_typization):
         if show_aas_id:
             print(f"aas_id: {aas_id}")
         if show_serial_part_typization:
-            fetch_for(aas_id=aas_id, sm_type='serialPartTypization', aas_proxy=True)
+            fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
 
 
 if __name__ == '__main__':
