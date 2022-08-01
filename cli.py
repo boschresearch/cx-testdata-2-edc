@@ -72,6 +72,50 @@ def search_all(aas_proxy):
         print(json.dumps(aas, indent=4))
         input("")
 
+@search.command('stat', help="Statistics - Fetch AAS endpoints and output list with results.")
+@click.option('-p', '--page', default=1, help="The page number in multi-page results.")
+@click.option('-s', '--page-size', default=10, help="The number of items on 1 page.")
+def search_all_stat(page: int, page_size: int):
+    stat = {
+        'ok': {},
+        'not_ok': {},
+        'ok_aas_ids': [],
+        'not_ok_aas_ids': [],
+        'items': 0,
+    }
+    all = registry_handling.get_all(page_size=page_size, page=page)
+    stat['items'] = len(all)
+    for aas in all:
+        #print(json.dumps(aas, indent=4))
+        try:
+            url = get_endpoint_for(aas=aas, endpoint_type='serialPartTypization')
+            """
+            if not "cxdev" in url:
+                print(url)
+                continue
+            """
+            if not url:
+                continue # means there is not serialPartTypization submodel in the AAS
+            url_parts = urlparse(url)
+            host = url_parts.netloc
+
+            try:
+                data = fetch_for_aas(aas=aas, sm_type='serialPartTypization')
+                #data = fetch_for(aas_id=aas['identification'], sm_type='serialPartTypization', aas_proxy=False)
+                #print(data)
+                stat['ok'][host] = stat['ok'].get(host, 0) + 1
+                stat['ok_aas_ids'].append(aas['identification'])
+                print(f"ok: {host}")
+            except Exception as fetch_ex:
+                stat['not_ok'][host] = stat['not_ok'].get(host, 0) + 1
+                stat['not_ok_aas_ids'].append(aas['identification'])
+                #print(f"not_ok: {aas['identification']}")
+                print(fetch_ex)
+        except Exception as ex:
+            print(ex)
+    print(stat)
+
+
 # edc
 @cli.group(help='Fetch from EDC')
 def edc():
@@ -158,26 +202,27 @@ def fetch_for_aas(aas, sm_type: str):
     given AAS (not only aas id)
     """
     if not aas:
-        print(f"Could not find aas for aas_id: {aas_id}")
-        sys.exit(-1)
+        raise Exception(f"Could not find aas for aas_id: {aas['identification']}")
     url = get_endpoint_for(aas=aas, endpoint_type=sm_type)
     start = time.time()
     url_parts = urlparse(url)
     path_parts = url_parts.path.split('/')
+    bpn = path_parts[1]
     path = str.join('/', path_parts[2:])
     #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{path_parts[1]}"
     #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
-    wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
+
+    #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
+    wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{bpn}"
 
     r = requests.get(wrapper_url, auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password))
     end = time.time()
     duration = end - start
     print(f"call execution time: {duration}")
     if not r.ok:
-        print(r.content)
-        sys.exit(-1)
+        raise Exception(f"Could not fetch data from url: {wrapper_url}. Result: {r.content}")
     j = r.json()
-    print(json.dumps(j, indent=4))
+    return j
 
 @fetch.command('SerialPartTypization')
 @click.argument('aas_id')
@@ -187,13 +232,15 @@ def fetch_serial_part_typization(aas_id):
 
 @fetch.command('AssemblyPartRelationship')
 @click.argument('aas_id')
-def fetch_assembly_part_relationship(aas_id, aas_proxy):
-    fetch_for(aas_id=aas_id, sm_type='assemblyPartRelationship', aas_proxy=aas_proxy)
+def fetch_assembly_part_relationship(aas_id):
+    data = fetch_for(aas_id=aas_id, sm_type='assemblyPartRelationship')
+    print(json.dumps(data, indent=4))
 
 @fetch.command('MaterialForRecycling')
 @click.argument('aas_id')
-def fetch_material_for_recycling(aas_id, aas_proxy):
-    fetch_for(aas_id=aas_id, sm_type='materialForRecycling', aas_proxy=aas_proxy)
+def fetch_material_for_recycling(aas_id):
+    data = fetch_for(aas_id=aas_id, sm_type='materialForRecycling')
+    print(json.dumps(data, indent=4))
 
 @fetch.command('EdcAssetId')
 @click.argument('edc_asset_id')
