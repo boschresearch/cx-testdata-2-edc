@@ -99,10 +99,10 @@ if __name__ == '__main__':
             for x in list(item.keys()):
                 if SCHEMA_AAS_LOOKUP_STRING in x:
                     del item[x]
-            counter = counter + 1
-            if counter > counter_max:
+            if counter >= counter_max:
                 print(f"counter_max reached. Not adding more items: {counter_max}")
                 break
+            counter = counter + 1
             with shelve.open(DB_CX_ITEMS) as db:
                 cx_id = item.get('catenaXId', '')
                 db[cx_id] = item
