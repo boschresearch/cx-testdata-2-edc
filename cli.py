@@ -121,6 +121,32 @@ def search_all_stat(page: int, page_size: int):
 def edc():
     pass
 
+@edc.command('catalog')
+def edc_get_catalog():
+    pass
+
+@edc.command('list_assets')
+def edc_list_assets():
+    params = {
+        'limit': 1000,
+    }
+    url = f"{settings.edc_base_url}/assets"
+    r = requests.get(url, headers=prepare_edc_headers(), params=params)
+    if not r.ok:
+        print(f"Could not fetch list of assets. Reason: {r.reason} Content: {r.content}")
+        sys.exit()
+    print(json.dumps(r.json(), indent=4))
+
+@edc.command('list_policies')
+def edc_list_policies():
+    url = f"{settings.edc_base_url}/policies"
+    r = requests.get(url, headers=prepare_edc_headers())
+    if not r.ok:
+        print(f"Could not fetch list of policies. Reason: {r.reason} Content: {r.content}")
+        sys.exit()
+    print(json.dumps(r.json(), indent=4))
+
+
 @edc.command('negotiate')
 @click.argument('connector_endpoint')
 @click.argument('edc_asset_id')
@@ -225,10 +251,34 @@ def fetch_for_aas(aas, sm_type: str):
     return j
 
 @fetch.command('SerialPartTypization')
-@click.argument('aas_id')
-def fetch_serial_part_typization(aas_id):
-    data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
-    print(json.dumps(data, indent=4))
+@click.option('-f', '--file-name', default=None)
+@click.argument('aas_id', default=None, required=False)
+def fetch_serial_part_typization(aas_id: str, file_name: str):
+    if aas_id:
+        data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
+        print(json.dumps(data, indent=4))
+    if file_name:
+        failed = []
+        good = []
+        with open(file_name, 'r') as f:
+            lines = f.readlines()
+            for l in lines:
+                parts = l.split('AAS ID:')
+                aas_id = parts[1].strip()
+                print(aas_id)
+                try:
+                    data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
+                except:
+                    failed.append(aas_id)
+                    print(f"failed: {aas_id}")
+                    continue
+                print(json.dumps(data, indent=4))
+                good.append(aas_id)
+        print(f"good: {good}")
+        print(f"failed: {failed}")
+        print(f"numbers: good items: {len(good)} failed items: {len(failed)}")
+
+
 
 @fetch.command('AssemblyPartRelationship')
 @click.argument('aas_id')
