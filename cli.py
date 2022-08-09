@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from email.policy import default
+from fileinput import filename
 import sys
 import time
 import json
@@ -66,7 +67,7 @@ def search_asset(global_asset_id):
         print(aas_id)
 
 @search.command('all')
-def search_all(aas_proxy):
+def search_all():
     all = registry_handling.get_all()
     for aas in all:
         print(json.dumps(aas, indent=4))
