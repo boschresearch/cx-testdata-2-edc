@@ -14,40 +14,41 @@ It contains default configuration for getting started with the getting-started-g
 
 https://catenax-ng.github.io/docs/catenax-at-home-getting-started-guide
 
-## Getting-Started-Guide
-For providing data, it is enough to start the guide with the following command:
-
-Checkout the project from:
-https://github.com/catenax-ng/catenax-at-home/tree/main/getting-started-guide
-
-```
-docker-compose up registry-service provider-control-plane provider-data-plane
-```
-If the Catena-X INT registry is configured (you need client_id and client_secret) you only need:
-```
-docker-compose up provider-control-plane provider-data-plane
-```
 
 # Run
 ```
-docker-compose --project-name getting-started-guide up --build testdata2edc
+docker-compose up --build
 ```
-This command starts the container and attaches it to the same network that has been started with the `getting-started-guide` docker environment by using the `--project-name` flag.
 
 Leave out `--build` to reuse the existing container/image.
 
-You can then import or delete data with (change your Testdata BPN...)
+Swagger API:s
+http://localhost:8080/docs#/
+
+![Swagger API Screenshot](./docs/swagger_api.png)
+
+# Configuration
+`.env-example` is an example for the `.env` environment file that is required. It is used for docker-compose and also used inside the container to provide configuration to the server, e.g. `client_id` and `client_secret` to access the registry.
+
+# Data Import
+Connect to the running container:
 ```
-docker exec -ti testdata2edc python importer.py --import-for BPNLTIERBZZ ./testdata_file.json
+docker-compose exec testdata2edc /bin/bash
+```
+You can then import or delete data with the following commands:
+**(Change your Testdata BPN...)**
+```
+python importer.py --import-for BPNLTIERBZZ /testdata/<testdata_filename>.json
 # delete items
-docker exec -ti testdata2edc python importer.py --import-for BPNLTIERBZZ --delete ./testdata_file.json
+python importer.py --import-for BPNLTIERBZZ --delete /testdata/<testdata_filename>.json
 ```
-The testdata file can be changed with `TESTDATA_FILE` in your customized `.env` file. Default is `OEMA_HYBRID_VEHICLES_10_fix8.json` in the root directory.
 
-Download Testdata files from the internal source at: https://confluence.catena-x.net/pages/viewpage.action?pageId=25225943
+By default the project directory `testdata` is mounted to `/testdata` inside the container. Save your testdata file in this mounted directory.
 
-Open http://localhost:8080/docs#/
-to see the endpoints and use one of the `cx_id` printed from the import script or afterwards from the sarted docker print out (if you start without `--build` option to reuse the existing container...)
+You can find testdata files from internal sources at e.g.: https://confluence.catena-x.net/display/PL/BoMAsBuilt+test+dataset#BoMAsBuilttestdataset-5TestDataFiles
+
+After the import, you can use the Submodel Endpoints with the `cx_id` as input. Try it at:
+http://localhost:8080/docs#/
 
 # Development
 ## Setup
@@ -70,20 +71,7 @@ python main.py
 
 # Todo / Notes
 - Instead of importer script, think about upload interface
-- The submodules catena-x-edc and tractusx are not used by default. Nothing to worry about and no need to checkout those submodules
 
-
-# Testing
-
-## Consumer
-```
-docker-compose up consumer-control-plane consumer-data-plane api-wrapper consumer-aas-proxy-service
-```
-
-## Provider
-```
-
-```
 
 ## Fetch data
 ```
