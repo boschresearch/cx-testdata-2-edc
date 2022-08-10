@@ -8,6 +8,7 @@ import shelve
 from uuid import uuid4
 import requests
 import json
+import logging
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY
 
@@ -111,9 +112,9 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
     }
     r = requests.post(f"{EDC_BASE_URL}/assets", json=data, headers=prepare_edc_headers())
     if not r.ok:
-        print(f"Could not create EDC asset. Reason: {r.reason} Content: {r.content}")
+        logging.error(f"Could not create EDC asset. Reason: {r.reason} Content: {r.content}")
         return None
-    print(f"EDC asset created for cx_id: {cx_id} asset_id: {asset_id}")
+    logging.info(f"EDC asset created for cx_id: {cx_id} asset_id: {asset_id}")
     return data    
 
 
@@ -126,7 +127,7 @@ def upsert_asset(cx_id:str, schema:str):
 
     existing_asset_id = get_asset(asset_id=asset_id)
     if existing_asset_id:
-        print(f"EDC asset already exists for cx_id: {cx_id} asset_id: {asset_id}")
+        logging.info(f"EDC asset already exists for cx_id: {cx_id} asset_id: {asset_id}")
         # and don't forget the policy
         upsert_policy(asset_id=asset_id)
 
@@ -163,7 +164,7 @@ def upsert_policy(asset_id: str):
     }
     r = requests.post(f"{EDC_BASE_URL}/policies", json=data, headers=prepare_edc_headers())
     if not r.ok:
-        print(r.content)
+        logging.error(f"Could not create policy. Reason: {r.reason} Content: {r.content}")
         return None
     with shelve.open(DB_POLICY_ID_MAPPINGS) as db:
         db[asset_id] = new_policy_id
@@ -181,7 +182,7 @@ def upsert_contract_definition(policy_id: str):
     }
     r = requests.post(f"{EDC_BASE_URL}/contractdefinitions", json=data, headers=prepare_edc_headers())
     if not r.ok:
-        print(r.content)
+        logging.error(f"Could not create Contractdefinition. Continuing. Reason: {r.reason} Content: {r.content}")
     return new_id
 
 
@@ -207,6 +208,6 @@ def delete_asset(cx_id: str, schema: str):
 
     r = requests.delete(f"{EDC_BASE_URL}/assets/{asset_id}", headers=prepare_edc_headers())
     if not r.ok:
-        print(f"Could not delete EDC asset with id: {asset_id}")
+        logging.info(f"Could not delete EDC asset with id: {asset_id}")
         return False
     return True

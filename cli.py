@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from email.policy import default
-from fileinput import filename
+import logging
 import sys
 import time
 import json
@@ -17,7 +16,6 @@ from dependencies import settings
 import importer
 
 
-print(json.dumps(settings.dict(), indent=4))
 
 @click.group(help='Helper tool to use aas-proxy')
 def cli():
@@ -31,7 +29,7 @@ def search():
 @click.option('-ea', '--print-edc-assets', default=False, is_flag=True)
 @click.argument('aas_id')
 def search_aas(aas_id, print_edc_assets):
-    print(aas_id)
+    logging.info(f"search_aas() aas_id: {aas_id}")
     aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
     if print_edc_assets:
         print_out_edc_assets(aas)
@@ -61,7 +59,7 @@ def extract_edc_information(submodel_descriptor_endpoint_url: str):
 @search.command('asset')
 @click.argument('global_asset_id')
 def search_asset(global_asset_id):
-    print(global_asset_id)
+    logging.info(f"search_asset() global_asset_id: {global_asset_id}")
     aas_ids = registry_handling.lookup_by_globalAssetIds_all(global_asset_id)
     for aas_id in aas_ids:
         print(aas_id)
@@ -111,9 +109,9 @@ def search_all_stat(page: int, page_size: int):
                 stat['not_ok'][host] = stat['not_ok'].get(host, 0) + 1
                 stat['not_ok_aas_ids'].append(aas['identification'])
                 #print(f"not_ok: {aas['identification']}")
-                print(fetch_ex)
+                logging.error(fetch_ex)
         except Exception as ex:
-            print(ex)
+            logging.error(ex)
     print(stat)
 
 
@@ -134,7 +132,7 @@ def edc_list_assets():
     url = f"{settings.edc_base_url}/assets"
     r = requests.get(url, headers=prepare_edc_headers(), params=params)
     if not r.ok:
-        print(f"Could not fetch list of assets. Reason: {r.reason} Content: {r.content}")
+        logging.error(f"Could not fetch list of assets. Reason: {r.reason} Content: {r.content}")
         sys.exit()
     print(json.dumps(r.json(), indent=4))
 
@@ -143,7 +141,7 @@ def edc_list_policies():
     url = f"{settings.edc_base_url}/policies"
     r = requests.get(url, headers=prepare_edc_headers())
     if not r.ok:
-        print(f"Could not fetch list of policies. Reason: {r.reason} Content: {r.content}")
+        logging.error(f"Could not fetch list of policies. Reason: {r.reason} Content: {r.content}")
         sys.exit()
     print(json.dumps(r.json(), indent=4))
 
@@ -157,7 +155,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
     #url = f"{settings.consumer_control_plane_base_url}/api/v1/data/catalog?providerUrl=http://cxdev.germanywestcentral.cloudapp.azure.com:8185"
     r = requests.get(url, headers=prepare_edc_headers())
     j = r.json()
-    print(json.dumps(j, indent=4))
+    logging.info(json.dumps(j, indent=4))
 
     data = {
         'connectorId': 'urn:connector:control.cxtesting.germanywestcentral.cloudapp.azure.com',
@@ -183,7 +181,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
     url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractnegotiations"
     r = requests.post(url, json=data, headers=prepare_edc_headers())
     if not r.ok:
-        print(f"Could not init negotiations. Error: {r.content}")
+        logging.error(f"Could not init negotiations. Error: {r.content}")
         sys.exit(-1)
     j = r.json()
     negotiation_id = j['id']
@@ -245,7 +243,7 @@ def fetch_for_aas(aas, sm_type: str):
     r = requests.get(wrapper_url, auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password))
     end = time.time()
     duration = end - start
-    print(f"call execution time: {duration}")
+    logging.info(f"call execution time: {duration}")
     if not r.ok:
         raise Exception(f"Could not fetch data from url: {wrapper_url}. Result: {r.content}")
     j = r.json()
@@ -266,18 +264,18 @@ def fetch_serial_part_typization(aas_id: str, file_name: str):
             for l in lines:
                 parts = l.split('AAS ID:')
                 aas_id = parts[1].strip()
-                print(aas_id)
+                logging.info(f"aas_id: {aas_id}")
                 try:
                     data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
                 except:
                     failed.append(aas_id)
-                    print(f"failed: {aas_id}")
+                    logging.error(f"failed to fetch for aas_id: {aas_id}")
                     continue
                 print(json.dumps(data, indent=4))
                 good.append(aas_id)
-        print(f"good: {good}")
-        print(f"failed: {failed}")
-        print(f"numbers: good items: {len(good)} failed items: {len(failed)}")
+        logging.info(f"good: {good}")
+        logging.info(f"failed: {failed}")
+        logging.info(f"numbers: good items: {len(good)} failed items: {len(failed)}")
 
 
 
@@ -313,7 +311,7 @@ def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id):
         'provider-connector-url': connector_url
     }
     url = f"{settings.api_wrapper_base_url}/{edc_asset_id}/submodel"
-    print(f"fetch_edc_asssubUrlet_via_wrapper: {url} \n params: {params}")
+    logging.info(f"fetch_edc_asssubUrlet_via_wrapper: {url} \n params: {params}")
     r = requests.get(
         url,
         auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password),
@@ -346,15 +344,18 @@ def list_cxids(testdata_file, bpn, show_aas_id, show_serial_part_typization):
     data = importer.get_testdata_from_file(testdata_file)
     for item in importer.iterate_bpn_aspects(testdata=data, bpn=bpn):
         cxid = item.get('catenaXId', '')
-        print(cxid)
+        logging.info(f"cxid: {cxid}")
         aas_id = None
         if show_aas_id or show_serial_part_typization:
             aas_id = registry_handling.lookup_by_globalAssetId(globalAssetId=cxid)
         if show_aas_id:
-            print(f"aas_id: {aas_id}")
+            logging.info(f"aas_id: {aas_id}")
         if show_serial_part_typization:
             fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='log.log', level=logging.INFO)
+    settings_dump = json.dumps(settings.dict(), indent=4)
+    logging.info("settings: {settings_dump}")
     cli()

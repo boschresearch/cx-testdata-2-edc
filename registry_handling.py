@@ -4,8 +4,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from cmath import log
 import sys
 import os
+import logging
 import json
 import requests
 from oauthlib.oauth2 import BackendApplicationClient
@@ -87,7 +89,7 @@ def lookup_by_globalAssetId(globalAssetId: str):
 def lookup_by_aas_id(aas_id: str):
     r = get_requests_session().get(f"{settings.registry_base_url}/registry/shell-descriptors/{aas_id}")
     if not r.ok:
-        print(f"Could not fetch AAS content for AAS ID: {aas_id} Reason:{r.reason} Content: {r.content}")
+        logging.info(f"Could not fetch AAS content for AAS ID: {aas_id} Reason:{r.reason} Content: {r.content}")
         return None
     return r.json()
 
@@ -101,7 +103,7 @@ def get_all(page_size: int = 10, page: int = 1):
     }
     r = session.get(f"{settings.registry_base_url}/registry/shell-descriptors", params=params)
     if not r.ok:
-        print(r.content)
+        logging.info(f"Could not fetch registry items. Reason: {r.reason} Content: {r.content}")
         return None
     j = r.json()
     return j['items']
@@ -202,7 +204,7 @@ def upsert_registry_entry(item: dict, bpn: str):
         #print(json.dumps(data, indent=4))
         r = get_requests_session().post(f"{settings.registry_base_url}/registry/shell-descriptors", json=data)
         if not r.ok:
-            print(f"Could not create AAS. status_code: {r.status_code} content: {r.content}")
+            logging.error(f"Could not create AAS. status_code: {r.status_code} content: {r.content}")
             return None
         result = r.json()
         aas_created = AssetAdministrationShellDescriptor(**result)
@@ -218,12 +220,11 @@ def delete_registry_entry(cx_id: str):
     """
     aas_id = lookup_by_globalAssetId(cx_id)
     if not aas_id:
-        print(f"Could not find and delete AAS for cx_id (globalAssetId): {cx_id}")
+        logging.info(f"Could not find and delete AAS for cx_id (globalAssetId): {cx_id}")
         return False
     r = get_requests_session().delete(f"{settings.registry_base_url}/registry/shell-descriptors/{aas_id}")
     if not r.ok:
-        print(r.content)
-        print(f"Could not delete registry entry for aas_id: {aas_id}")
+        logging.info(f"Could not delete registry entry for aas_id: {aas_id} Reason: {r.reason} Content: {r.content}")
         return False
     return True
     
