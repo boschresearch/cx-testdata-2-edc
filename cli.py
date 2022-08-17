@@ -301,15 +301,19 @@ def fetch_edc_asset(edc_asset_id):
 # fetch via api-wrapper directly
 #####
 @fetch.command('api-wrapper')
+@click.option('-r', '--raw-data', default=False, is_flag=True)
 @click.argument('connector_url')
 @click.argument('edc_asset_id')
-def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id):
+def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id, raw_data):
     # needs api-wrapper endpoint from config
     params = {
-        'content': 'value',
-        'extent': 'withBlobValue',
         'provider-connector-url': connector_url
     }
+    if not raw_data:
+        # assuming AAS Submodel with required params
+        params['content'] = 'value'
+        params['extent'] = 'withBlobValue'
+
     url = f"{settings.api_wrapper_base_url}/{edc_asset_id}/submodel"
     logging.info(f"fetch_edc_asssubUrlet_via_wrapper: {url} \n params: {params}")
     r = requests.get(
@@ -317,8 +321,11 @@ def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id):
         auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password),
         params=params,
     )
-    j = r.json()
-    print(print(json.dumps(j, indent=4)))
+    if not raw_data:
+        j = r.json()
+        print(print(json.dumps(j, indent=4)))
+    else:
+        print(r.content)
 
 #####
 # testdata management
