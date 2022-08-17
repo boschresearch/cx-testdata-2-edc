@@ -18,7 +18,7 @@ from aas.registry.models.submodel_descriptor import SubmodelDescriptor
 from aas.registry.models.protocol_information import ProtocolInformation
 from aas.registry.models.endpoint import Endpoint
 from aas.registry.models.reference import Reference
-from dependencies import CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings
+from dependencies import CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings, testdata_schema_to_real_schema
 from edc_handling import upsert_aas_id, upsert_sm_id
 from datetime import datetime, timedelta
 #import jwt
@@ -120,6 +120,7 @@ def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str)
     Prepares a Submodel
     """
     path = path_for_schema(schema=schema)
+    semantic_id_schema = testdata_schema_to_real_schema(schema=schema)
     sm_id = upsert_sm_id(cx_id=cx_id, schema=schema)
     edc_endpoint = prepare_edc_submodel_endpoint_address(aas_id=aas_id, sm_id=sm_id, bpn=bpn)
     endpoints = [
@@ -145,7 +146,7 @@ def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str)
         identification=sm_id,
         id_short=idshort_for_schema(schema=schema),
         semantic_id=Reference(
-            value=[schema]
+            value=[semantic_id_schema]
         ),
         endpoints=endpoints,
     )

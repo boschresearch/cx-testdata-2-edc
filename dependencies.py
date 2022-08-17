@@ -85,6 +85,20 @@ def idshort_for_schema(schema: str):
         return 'materialForRecycling'
     return 'notimplementedyet' # default
 
+def testdata_schema_to_real_schema(schema: str):
+    """
+    Unfortunately testdataset uses different keys as a 'pseudo' schema.
+    The registry and other tools require other (correct) schema strings
+    """
+    if SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING in schema:
+        return 'urn:bamm:io.catenax.serial_part_typization:1.1.0#SerialPartTypization'
+    if SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING in schema:
+        return 'urn:bamm:io.catenax.assembly_part_relationship:1.1.0#AssemblyPartRelationship'
+    if SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING in schema:
+        return 'urn:bamm:io.catenax.material_for_recycling:1.1.0#MaterialForRecycling'
+    return 'notimplementedyet' # default
+
+
 def get_first_match(item, key_match: str, default_return = None):
     """
     Since the schemas have changed, this is a workaround to work with
