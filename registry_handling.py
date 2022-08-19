@@ -81,7 +81,7 @@ def lookup_by_globalAssetId(globalAssetId: str):
     Everying else than 1 exact match returns None (for now)
     """
     aas_ids = lookup_by_globalAssetIds_all(globalAssetId=globalAssetId)
-    if len(aas_ids) != 1:
+    if not aas_ids or len(aas_ids) != 1:
         return None
     return aas_ids[0]
 
