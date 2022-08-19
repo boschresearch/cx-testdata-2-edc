@@ -21,7 +21,7 @@ from aas.registry.models.reference import Reference
 from dependencies import CX_SCHEMA_LOOKUP_STRING, DB_CX_ITEMS, ENDPOINT_BASE_URL_EXTERNAL, PROVIDER_CONTROL_PLANE_BASE_URL, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, get_db_item, get_first_match, idshort_for_schema, iterate_cx_items, path_for_schema, settings, testdata_schema_to_real_schema
 from edc_handling import upsert_aas_id, upsert_sm_id
 from datetime import datetime, timedelta
-#import jwt
+import jwt
 
 
 session = None
@@ -46,8 +46,9 @@ def get_requests_session():
         client = BackendApplicationClient(client_id=settings.client_id_registry)
         s = OAuth2Session(client=client)
         token = s.fetch_token(token_url=settings.token_url_registry, client_secret=settings.client_secret_registry)
-        #decoded = jwt.decode(token['access_token'], options={'verify_signature': False})
-        #print(f"decoded access_token: {decoded}")
+        decoded = jwt.decode(token['access_token'], options={'verify_signature': False})
+        decoded_str = json.dumps(decoded, indent=4)
+        logging.debug(f"decoded access_token: {decoded_str}")
         expires_in_seconds = int(token['expires_in']) - 5 # reduce by 5 seconds buffer
         token_expires_ts = datetime.now() + timedelta(seconds=expires_in_seconds)
         #session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
