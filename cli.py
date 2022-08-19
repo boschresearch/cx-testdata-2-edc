@@ -202,6 +202,23 @@ def fetch():
     pass
 
 def get_endpoint_for(aas, endpoint_type: str):
+    # now, idShort is used with different strings and we should correctly lookup the information
+    # from the semanticId.value list
+    # since those strings are not perfect yet, we'll just search the string if it contains
+    # the 'relevant' part
+    ep_type_lower = endpoint_type.lower()
+    for sm in aas['submodelDescriptors']:
+        for sid in sm['semanticId']['value']:
+            sid_lower = sid.lower()
+            if ep_type_lower in sid_lower:
+                return sm['endpoints'][0]['protocolInformation']['endpointAddress']
+
+    # this is the bug part, if previous part didn't work, we try the idShort option
+    ep = get_endpoint_from_idshort(aas, endpoint_type) # Release 1 bug / AAS-Proxy bug
+    return ep
+
+
+def get_endpoint_from_idshort(aas, endpoint_type: str):
     """
     Since AAS-Proxy bug https://github.com/catenax-ng/catenax-at-home/issues/46
 
@@ -223,12 +240,22 @@ def fetch_for(aas_id: str, sm_type: str):
     return fetch_for_aas(aas=aas, sm_type=sm_type)
 
 def fetch_for_aas(aas, sm_type: str):
+    return fetch_for_aas_type_list(aas, [sm_type])
+
+def fetch_for_aas_type_list(aas, sm_types):
     """
     given AAS (not only aas id)
+
+    Tries to find the first endpont from the given list of types.
+    Relevant for serialPartTypization vs Batch. First match is returned.
     """
     if not aas:
         raise Exception(f"Could not find aas for aas_id: {aas['identification']}")
-    url = get_endpoint_for(aas=aas, endpoint_type=sm_type)
+    url = None
+    for sm_type in sm_types:
+        url = get_endpoint_for(aas=aas, endpoint_type=sm_type)
+        if url:
+            break
     start = time.time()
     url_parts = urlparse(url)
     path_parts = url_parts.path.split('/')
@@ -251,31 +278,45 @@ def fetch_for_aas(aas, sm_type: str):
 
 @fetch.command('SerialPartTypization')
 @click.option('-f', '--file-name', default=None)
+@click.option('-b', '--bpn', default=None)
 @click.argument('aas_id', default=None, required=False)
-def fetch_serial_part_typization(aas_id: str, file_name: str):
+def fetch_serial_part_typization(aas_id: str, file_name: str, bpn: str):
     if aas_id:
-        data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
+        aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+        data = fetch_for_aas_type_list(aas, sm_types=['serialPartTypization', 'Batch'])
         print(json.dumps(data, indent=4))
     if file_name:
-        failed = []
-        good = []
         with open(file_name, 'r') as f:
             lines = f.readlines()
+            aas_ids = []
             for l in lines:
                 parts = l.split('AAS ID:')
                 aas_id = parts[1].strip()
-                logging.info(f"aas_id: {aas_id}")
-                try:
-                    data = fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
-                except:
-                    failed.append(aas_id)
-                    logging.error(f"failed to fetch for aas_id: {aas_id}")
-                    continue
-                print(json.dumps(data, indent=4))
-                good.append(aas_id)
-        logging.info(f"good: {good}")
-        logging.info(f"failed: {failed}")
-        logging.info(f"numbers: good items: {len(good)} failed items: {len(failed)}")
+                aas_ids.append(aas_id)
+            fetch_for_aas_ids(aas_ids=aas_ids, sm_types=['serialPartTypization', 'Batch'])
+
+    if bpn:
+        # first find all relevant AAS
+        aas_ids = registry_handling.discover_via_bpn(bpn)
+        fetch_for_aas_ids(aas_ids=aas_ids, sm_types=['serialPartTypization', 'Batch'])
+
+def fetch_for_aas_ids(aas_ids, sm_types):
+    failed = []
+    good = []
+
+    for aas_id in aas_ids:
+        try:
+            aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+            data = fetch_for_aas_type_list(aas, sm_types=sm_types)
+        except Exception as ex:
+            failed.append(aas_id)
+            logging.error(f"failed to fetch for aas_id: {aas_id}")
+            continue
+        print(json.dumps(data, indent=4))
+        good.append(aas_id)
+    logging.info(f"good: {good}")
+    logging.info(f"failed: {failed}")
+    logging.info(f"numbers: good items: {len(good)} failed items: {len(failed)}")
 
 
 
@@ -321,6 +362,8 @@ def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id, raw_data):
         auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password),
         params=params,
     )
+    if not r.ok:
+        logging.error(f"could not fetch data. Reason: {r.reason} Content: {r.content}")
     if not raw_data:
         j = r.json()
         print(print(json.dumps(j, indent=4)))
@@ -362,7 +405,8 @@ def list_cxids(testdata_file, bpn, show_aas_id, show_serial_part_typization):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='log.log', level=logging.INFO)
+    FORMAT = '%(asctime)s %(funcName)s %(message)s'
+    logging.basicConfig(filename='log.log', level=logging.DEBUG, format=FORMAT)
     settings_dump = json.dumps(settings.dict(), indent=4)
-    logging.info("settings: {settings_dump}")
+    logging.info(f"settings: {settings_dump}")
     cli()
