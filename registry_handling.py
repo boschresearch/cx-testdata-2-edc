@@ -66,6 +66,31 @@ def lookup_by_globalAssetIds_all(globalAssetId: str):
             'key': 'globalAssetId',
             'value': globalAssetId,
         }]
+    return discover(query1=query1)
+
+def discover_via_bpn(bpn: str):
+    query = [
+        {
+            'key': 'ManufacturerId',
+            'value': bpn,
+        }
+    ]
+    list1 = discover(query1=query)
+    # because of the BUG with not clear keys
+    # ManufactuererId vs ManufactuererID
+    query2 = [
+        {
+            'key': 'ManufacturerID',
+            'value': bpn,
+        }
+    ]
+    list2 = discover(query1=query2)
+    result = list1 + list2
+    unique_result = list(set(result)) # just in case we have entires in both lists
+    return unique_result
+
+
+def discover(query1):
     query1_str = json.dumps(query1)
     query = {
         'assetIds': query1_str
