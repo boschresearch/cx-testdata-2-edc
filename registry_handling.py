@@ -33,6 +33,24 @@ def prepare_auth_headers(access_token: str):
     }
     return headers
 
+def request_token():
+    data = {
+        'grant_type': 'client_credentials',
+        'client_id': settings.client_id_registry,
+        'client_secret': settings.client_secret_registry,
+    }
+    if settings.request_token_scope:
+        data['scope'] = settings.request_token_scope
+
+    r = requests.post(settings.token_url_registry, data=data)
+    if not r.ok:
+        logging.error(f"could not fetch access token.")
+    token = r.json()
+    decoded = jwt.decode(token['access_token'], options={'verify_signature': False})
+    decoded_str = json.dumps(decoded, indent=4)
+    logging.debug(f"decoded access_token: {decoded_str}")
+    return token
+
 def get_requests_session():
     global session #
     global token_expires_ts
@@ -42,17 +60,9 @@ def get_requests_session():
             return session
 
     if settings.client_id_registry and settings.client_secret_registry:
-        # https://requests-oauthlib.readthedocs.io/en/latest/oauth2_workflow.html#backend-application-flow
-        client = BackendApplicationClient(client_id=settings.client_id_registry)
-        s = OAuth2Session(client=client)
-        token = s.fetch_token(token_url=settings.token_url_registry, client_secret=settings.client_secret_registry)
-        decoded = jwt.decode(token['access_token'], options={'verify_signature': False})
-        decoded_str = json.dumps(decoded, indent=4)
-        logging.debug(f"decoded access_token: {decoded_str}")
+        token = request_token()
         expires_in_seconds = int(token['expires_in']) - 5 # reduce by 5 seconds buffer
         token_expires_ts = datetime.now() + timedelta(seconds=expires_in_seconds)
-        #session = OAuth2Session(client_id=CLIENT_ID_REGISTRY, token=token)
-        # to also work with the aas-proxy
         headers = prepare_auth_headers(token['access_token'])
         session = requests.Session()
         session.headers.update(headers)

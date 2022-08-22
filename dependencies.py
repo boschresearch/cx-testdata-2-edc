@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     client_id_registry: str = ''
     client_secret_registry: str = Field(default='', exclude=True)
     token_url_registry: str = ''
+    request_token_scope: str = ''
     # wrapper / proxy
     wrapper_basic_auth_user: str = 'someuser'
     wrapper_basic_auth_password: str = Field(default='somepassword', exclude=True)
