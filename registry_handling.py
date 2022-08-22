@@ -10,8 +10,6 @@ import os
 import logging
 import json
 import requests
-from oauthlib.oauth2 import BackendApplicationClient
-from requests_oauthlib import OAuth2Session
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from aas.registry.models.identifier_key_value_pair import IdentifierKeyValuePair
 from aas.registry.models.submodel_descriptor import SubmodelDescriptor
