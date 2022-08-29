@@ -27,7 +27,9 @@ token_expires_ts = None
 
 def prepare_auth_headers(access_token: str):
     headers = {
-        "Authorization": f"Bearer {access_token}"
+        "Authorization": f"Bearer {access_token}",
+        # Azure Application Firewall blocks the request with 403 if the real UA set by python-requests is used
+        "User-Agent": "pythonrequests",
     }
     return headers
 
