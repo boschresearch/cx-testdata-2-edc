@@ -163,7 +163,7 @@ def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str)
             protocol_information=ProtocolInformation(
                 endpoint_address=edc_endpoint,
                 endpointProtocol="IDS/ECLIPSE DATASPACE CONNECTOR",
-                endpointProtocolVersion="0.0.1-SNAPSHOT"
+                endpointProtocolVersion="0" # 0.0.1-SNAPSHOT as required by spec doesn't make sense
             )
         )]
     if ENDPOINT_BASE_URL_EXTERNAL:
