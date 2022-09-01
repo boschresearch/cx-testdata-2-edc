@@ -106,10 +106,29 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
         "dataAddress": {
             "properties": {
                 "type": "HttpData",
-                "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
+                "baseUrl": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
             }
         }
     }
+
+    if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
+        # some legacy code
+        data = {
+            "asset": {
+                "properties": {
+                    "asset:prop:id": asset_id,
+                    "asset:prop:contenttype": "application/json",
+                    "asset:prop:policy-id": "use-eu",
+                }
+            },
+            "dataAddress": {
+                "properties": {
+                    "type": "HttpData",
+                    "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
+                }
+            }
+        }
+
     r = requests.post(f"{EDC_BASE_URL}/assets", json=data, headers=prepare_edc_headers())
     if not r.ok:
         logging.error(f"Could not create EDC asset. Reason: {r.reason} Content: {r.content}")
