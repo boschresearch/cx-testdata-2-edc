@@ -10,10 +10,13 @@ from typing import Any
 from uuid import uuid4
 from pydantic import BaseSettings, PrivateAttr, Field
 
+BACKWARD_COMPATIBILITY_0_0_6 = '0.0.6'
 
 class Settings(BaseSettings):
     # typically external
     provider_control_plane_base_url: str = 'http://provider-control-plane:8282'
+    # backward compatibility
+    backward_compatibility: str = '' # set to BACKWARD_COMPATIBILITY_0_0_6 if required
     # used for EDC -> endpoint communication
     endpoint_base_url_internal: str = 'http://testdata2edc:8080'
     # if given add direct (non-EDC) endpoint for it

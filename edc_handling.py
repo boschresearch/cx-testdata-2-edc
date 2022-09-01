@@ -10,7 +10,7 @@ import requests
 import json
 import logging
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
-from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY
+from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, BACKWARD_COMPATIBILITY_0_0_6, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY, settings
 
 
 def prepare_edc_headers():
@@ -147,22 +147,48 @@ def upsert_policy(asset_id: str):
         return policy_id
 
     new_policy_id = str(uuid4())
+
     data = {
         "uid": new_policy_id,
-        "permissions": [
-            {
-                "target": asset_id,
-                "action": {
-                    "type": "USE"
-                },
-                "edctype": "dataspaceconnector:permission"
-            }
-        ],
+        "policy": {
+            "permissions": [
+                {
+                    "target": asset_id,
+                    "action": {
+                        "type": "USE"
+                    },
+                    "edctype": "dataspaceconnector:permission"
+                }
+            ],
+        },
         "@type": {
             "@policytype": "set"
         }
     }
-    r = requests.post(f"{EDC_BASE_URL}/policies", json=data, headers=prepare_edc_headers())
+
+    if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
+        # some legacy format if required...
+        data = {
+            "uid": new_policy_id,
+            "permissions": [
+                {
+                    "target": asset_id,
+                    "action": {
+                        "type": "USE"
+                    },
+                    "edctype": "dataspaceconnector:permission"
+                }
+            ],
+            "@type": {
+                "@policytype": "set"
+            }
+        }
+    policy_endpoint_path = '/policydefinitions'
+    if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
+        # legacy endpoint if required...
+        policy_endpoint_path = '/policies'
+
+    r = requests.post(f"{EDC_BASE_URL}{policy_endpoint_path}", json=data, headers=prepare_edc_headers())
     if not r.ok:
         logging.error(f"Could not create policy. Reason: {r.reason} Content: {r.content}")
         return None
