@@ -161,7 +161,7 @@ def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str)
     edc_endpoint = prepare_edc_submodel_endpoint_address(aas_id=aas_id, sm_id=sm_id, bpn=bpn)
     endpoints = [
         Endpoint(
-            interface='SUBMODEL-1.0RC02', #TODO: why RC02?
+            interface='EDC',
             protocol_information=ProtocolInformation(
                 endpoint_address=edc_endpoint,
                 endpointProtocol="IDS/ECLIPSE DATASPACE CONNECTOR",
@@ -171,7 +171,7 @@ def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str)
     if ENDPOINT_BASE_URL_EXTERNAL:
         endpoints.append(
             Endpoint(
-                interface='SUBMODEL-1.0RC02', #TODO: why RC02?
+                interface='EDC',
                 protocolInformation=ProtocolInformation(
                     endpoint_address= ENDPOINT_BASE_URL_EXTERNAL + path + '/' + cx_id + '/submodel?content=value&extent=withBlobValue'
                 )
