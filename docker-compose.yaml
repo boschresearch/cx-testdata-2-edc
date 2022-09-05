@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  testdata2edc:
+    container_name: testdata2edc
+    build: ./
+    ports:
+      - "${PORT_MAPPING:-127.0.0.1:8080}:8080"
+    volumes:
+      #- "${TESTDATA_FILE:-./OEMA_HYBRID_VEHICLES_10_fix8.json}:/code/testdata_file.json"
+      - ./testdata/:/testdata/
+    env_file:
+      # env file is used also inside the container
+      - .env
