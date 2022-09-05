@@ -11,6 +11,7 @@ from uuid import uuid4
 from pydantic import BaseSettings, PrivateAttr, Field
 
 BACKWARD_COMPATIBILITY_0_0_6 = '0.0.6'
+BACKWARD_COMPATIBILITY_0_1_0 = '0.1.0'
 
 class Settings(BaseSettings):
     # typically external

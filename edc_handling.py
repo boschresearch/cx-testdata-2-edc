@@ -10,7 +10,7 @@ import requests
 import json
 import logging
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
-from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, BACKWARD_COMPATIBILITY_0_0_6, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY, settings
+from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, BACKWARD_COMPATIBILITY_0_0_6, BACKWARD_COMPATIBILITY_0_1_0, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY, settings
 
 
 def prepare_edc_headers():
@@ -168,7 +168,7 @@ def upsert_policy(asset_id: str):
     new_policy_id = str(uuid4())
 
     data = {
-        "uid": new_policy_id,
+        "id": new_policy_id,
         "policy": {
             "permissions": [
                 {
@@ -184,6 +184,25 @@ def upsert_policy(asset_id: str):
             "@policytype": "set"
         }
     }
+
+    if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_1_0:
+        data = {
+            "uid": new_policy_id,
+            "policy": {
+                "permissions": [
+                    {
+                        "target": asset_id,
+                        "action": {
+                            "type": "USE"
+                        },
+                        "edctype": "dataspaceconnector:permission"
+                    }
+                ],
+            },
+            "@type": {
+                "@policytype": "set"
+            }
+        }
 
     if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
         # some legacy format if required...
