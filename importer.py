@@ -10,6 +10,7 @@ import os
 import argparse
 import json
 import shelve
+import logging
 
 from registry_handling import delete_registry_entry_from_cx_items, upsert_registry_entry_from_cx_items
 from edc_handling import delete_assets_from_cx_items, upsert_assets_from_cx_items
@@ -52,6 +53,9 @@ def iterate_bpn_aspects(testdata, bpn):
 
 ###################### main ##################
 if __name__ == '__main__':
+    FORMAT = '%(asctime)s %(funcName)s %(message)s'
+    logging.basicConfig(filename='log.log', level=logging.DEBUG, format=FORMAT)
+
     parser = argparse.ArgumentParser(description="Import from test data set (JSON)")
     parser.add_argument('input_filename',
             help='Input file. needs to be in format of TestDataContainer/1.0.0')
