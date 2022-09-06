@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     consumer_aas_proxy_base_url: str = 'http://consumer-aas-proxy:4245'
     consumer_control_plane_base_url: str = 'http://consumer-control-plane:9193'
     edc_base_url: str = 'http://provider-control-plane:9193/api/v1/data'
-    edc_api_key: str = ''
+    edc_api_key: str = Field(default='', exclude=True)
+    provider_edc_api_key: str = Field(default='', exclude=True)
+    consumer_edc_api_key: str = Field(default='', exclude=True)
     # oauth
     client_id_registry: str = ''
     client_secret_registry: str = Field(default='', exclude=True)

@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import click
 import requests
 from requests.auth import HTTPBasicAuth
-from edc_handling import prepare_edc_headers
+from edc_handling import prepare_edc_headers_consumer, prepare_edc_headers_provider
 import registry_handling
 from dependencies import settings
 import importer
@@ -130,7 +130,7 @@ def edc_list_assets():
         'limit': 1000,
     }
     url = f"{settings.edc_base_url}/assets"
-    r = requests.get(url, headers=prepare_edc_headers(), params=params)
+    r = requests.get(url, headers=prepare_edc_headers_provider(), params=params)
     if not r.ok:
         logging.error(f"Could not fetch list of assets. Reason: {r.reason} Content: {r.content}")
         sys.exit()
@@ -139,7 +139,7 @@ def edc_list_assets():
 @edc.command('list_policies')
 def edc_list_policies():
     url = f"{settings.edc_base_url}/policies"
-    r = requests.get(url, headers=prepare_edc_headers())
+    r = requests.get(url, headers=prepare_edc_headers_provider())
     if not r.ok:
         logging.error(f"Could not fetch list of policies. Reason: {r.reason} Content: {r.content}")
         sys.exit()
@@ -153,7 +153,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
 
     url = f"{settings.consumer_control_plane_base_url}/api/v1/data/control/catalog?provider=http://cxdev.germanywestcentral.cloudapp.azure.com:8185"
     #url = f"{settings.consumer_control_plane_base_url}/api/v1/data/catalog?providerUrl=http://cxdev.germanywestcentral.cloudapp.azure.com:8185"
-    r = requests.get(url, headers=prepare_edc_headers())
+    r = requests.get(url, headers=prepare_edc_headers_consumer())
     j = r.json()
     logging.info(json.dumps(j, indent=4))
 
@@ -179,7 +179,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
     }
     #url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractdefinitions"
     url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractnegotiations"
-    r = requests.post(url, json=data, headers=prepare_edc_headers())
+    r = requests.post(url, json=data, headers=prepare_edc_headers_consumer())
     if not r.ok:
         logging.error(f"Could not init negotiations. Error: {r.content}")
         sys.exit(-1)
@@ -188,7 +188,7 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
 
     url = f"{settings.consumer_control_plane_base_url}/api/v1/data/contractnegotiations/{negotiation_id}"
     while(True):
-        r = requests.get(url, headers=prepare_edc_headers())
+        r = requests.get(url, headers=prepare_edc_headers_consumer())
         j = r.json()
         print(json.dumps(j, indent=4))
         time.sleep(2)

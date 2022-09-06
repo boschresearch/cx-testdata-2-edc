@@ -13,6 +13,20 @@ from aas.registry.models.asset_administration_shell_descriptor import AssetAdmin
 from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, BACKWARD_COMPATIBILITY_0_0_6, BACKWARD_COMPATIBILITY_0_1_0, DB_POLICY_ID_MAPPINGS, EDC_BASE_URL, ENDPOINT_BASE_URL_INTERNAL, MATERIAL_FOR_RECYCLING_PATH, DB_EDC_ASSETS, DB_CX_ITEMS, DB_ID_MAPPINGS, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, get_db_item, iterate_cx_items_schemas, path_for_schema, EDC_API_KEY, settings
 
 
+def prepare_edc_headers_provider():
+    headers = {}
+    if settings.provider_edc_api_key:
+        headers['X-Api-Key'] = settings.provider_edc_api_key
+
+    return headers
+
+def prepare_edc_headers_consumer():
+    headers = {}
+    if settings.consumer_edc_api_key:
+        headers['X-Api-Key'] = settings.consumer_edc_api_key
+
+    return headers
+
 def prepare_edc_headers():
     headers = {}
     if EDC_API_KEY:
