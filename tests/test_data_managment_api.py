@@ -5,7 +5,7 @@ from uuid import uuid4
 
 PROVIDER_EDC_BASE_URL = os.getenv('PROVIDER_EDC_BASE_URL', 'http://localhost:8080')
 PROVIDER_EDC_API_KEY = os.getenv('PROVIDER_EDC_API_KEY', '1234')
-
+NR_OF_ASSETS = int(os.getenv('NR_OF_ASSETS', '10'))
 
 def prepare_data_management_auth():
     return {
@@ -16,20 +16,24 @@ def get_number_of_elements(endpoint):
     """
     """
     try:
-        r = requests.get(endpoint, headers=prepare_data_management_auth())
+        r = requests.get(endpoint, headers=prepare_data_management_auth(), params={ 'limit': NR_OF_ASSETS * 2 })
         j = r.json()
         return len(j)
     except:
         return None
 
 
-def create_random_asset_and_co():
-    asset_id = create_asset()
-    policy_id = create_policy(asset_id=asset_id)
-    contract_id = create_contract_definition(policy_id=policy_id)
-    return {
-        'asset_id': asset_id, 'policy_id': policy_id, 'contract_id': contract_id
-    }
+def create_random_asset_and_co(nr_of_assets: int = 1):
+    result = []
+    for x in range(nr_of_assets):
+        asset_id = create_asset()
+        policy_id = create_policy(asset_id=asset_id)
+        contract_id = create_contract_definition(policy_id=policy_id)
+        created = {
+            'asset_id': asset_id, 'policy_id': policy_id, 'contract_id': contract_id
+        }
+        result.append(created)
+    return result
 
 def create_asset():
     asset_id = str(uuid4())
@@ -69,7 +73,7 @@ def create_contract_definition(policy_id: str):
 def create_policy(asset_id: str):
     policy_id = str(uuid4())
     data = {
-        "uid": policy_id,
+        "id": policy_id,
         "policy": {
             "permissions": [
                 {
@@ -114,39 +118,41 @@ def test_create_and_delete(edc_is_clean: bool):
 
     """
     assert edc_is_clean, f"Setup not clean or can not connect. PROVIDER_EDC_BASE_URL: {PROVIDER_EDC_BASE_URL}"
-    asset_inf = create_random_asset_and_co()
-    assert 'asset_id' in asset_inf
+    asset_inf = create_random_asset_and_co(nr_of_assets=NR_OF_ASSETS)
+    #assert 'asset_id' in asset_inf
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/assets")
-    assert nr_of_elements == 1
+    assert nr_of_elements == NR_OF_ASSETS
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/policydefinitions")
-    assert nr_of_elements == 1
+    assert nr_of_elements == NR_OF_ASSETS
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/contractdefinitions")
-    assert nr_of_elements == 1
+    assert nr_of_elements == NR_OF_ASSETS
+
+    first = asset_inf[0]
 
     # delete asset
-    r = requests.delete(f"{PROVIDER_EDC_BASE_URL}/assets/{asset_inf['asset_id']}", headers=prepare_data_management_auth())
+    r = requests.delete(f"{PROVIDER_EDC_BASE_URL}/assets/{first['asset_id']}", headers=prepare_data_management_auth())
     assert str(r.status_code).startswith('20'), f"Response code NOT 20x. status_code: {r.status_code}"
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/assets")
-    assert nr_of_elements == 0
+    assert nr_of_elements == NR_OF_ASSETS - 1
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/policydefinitions")
-    assert nr_of_elements == 1
+    assert nr_of_elements == NR_OF_ASSETS
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/contractdefinitions")
-    assert nr_of_elements == 1
+    assert nr_of_elements == NR_OF_ASSETS
 
     # delete contract definition
-    r = requests.delete(f"{PROVIDER_EDC_BASE_URL}/contractdefinitions/{asset_inf['contract_id']}", headers=prepare_data_management_auth())
+    r = requests.delete(f"{PROVIDER_EDC_BASE_URL}/contractdefinitions/{first['contract_id']}", headers=prepare_data_management_auth())
     assert str(r.status_code).startswith('20'), f"Response code NOT 20x. status_code: {r.status_code}"
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/contractdefinitions")
-    assert nr_of_elements == 0
+    assert nr_of_elements == NR_OF_ASSETS - 1
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/policydefinitions")
-    assert nr_of_elements == 1
+    assert nr_of_elements == NR_OF_ASSETS
 
 
     # delete policy
-    r = requests.delete(f"{PROVIDER_EDC_BASE_URL}/policydefinitions/{asset_inf['policy_id']}", headers=prepare_data_management_auth())
+    r = requests.delete(f"{PROVIDER_EDC_BASE_URL}/policydefinitions/{first['policy_id']}", headers=prepare_data_management_auth())
     assert str(r.status_code).startswith('20'), f"Response code NOT 20x. status_code: {r.status_code}"
     nr_of_elements = get_number_of_elements(f"{PROVIDER_EDC_BASE_URL}/policydefinitions")
-    assert nr_of_elements == 0
+    assert nr_of_elements == NR_OF_ASSETS - 1
 
 if __name__ == '__main__':
     pytest.main()

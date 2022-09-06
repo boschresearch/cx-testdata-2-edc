@@ -8,13 +8,24 @@ pip install requests pytest
 # settings
 export PROVIDER_EDC_BASE_URL=http://myserver:8186/api/v1/data
 export PROVIDER_EDC_API_KEY=12345
+export NR_OF_ASSETS=10
 
 # run the test - requires a 'clean' EDC environment
 python ./test_data_management_api.py 
 ```
 
+# Some Testing Results
 
-## Vscode Testing
+|nr of assets   | raw catalog file size |
+|:-------------:|:---------------------:|
+|50             | 63 MB                 |
+|100            | 495 MB                |
+|200            | out of heap space     |
+
+Result with a 1:1:1 relation, meaning 1 asset -> 1 policy -> 1 contractdefinition.
+
+
+# Vscode Testing
 In your `.vscode/settings.json` add
 ```
 "python.envFile": "${workspaceFolder}/.env"
