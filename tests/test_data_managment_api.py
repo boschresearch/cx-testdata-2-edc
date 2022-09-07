@@ -29,7 +29,7 @@ def create_random_asset_and_co(nr_of_assets: int = 1):
     for x in range(nr_of_assets):
         asset_id = create_asset()
         policy_id = create_policy(asset_id=asset_id)
-        contract_id = create_contract_definition(policy_id=policy_id)
+        contract_id = create_contract_definition(policy_id=policy_id, asset_id=asset_id)
         created = {
             'asset_id': asset_id, 'policy_id': policy_id, 'contract_id': contract_id
         }
@@ -60,13 +60,19 @@ def create_asset():
     # TODO: checks
     return asset_id
 
-def create_contract_definition(policy_id: str):
+def create_contract_definition(policy_id: str, asset_id: str):
     cd_id = str(uuid4())
     data = {
         "id": cd_id,
         "accessPolicyId": policy_id,
         "contractPolicyId": policy_id,
-        "criteria": [],
+        "criteria": [
+            {
+                "operandLeft": "asset:prop:id",
+                "operator": "=",
+                "operandRight": asset_id
+            }
+        ],
     }
     r = requests.post(f"{PROVIDER_EDC_BASE_URL}/contractdefinitions", json=data, headers=prepare_data_management_auth())
     return cd_id
