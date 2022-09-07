@@ -259,6 +259,15 @@ def delete_registry_entry(cx_id: str):
     if not aas_id:
         logging.info(f"Could not find and delete AAS for cx_id (globalAssetId): {cx_id}")
         return False
+
+    return delete_registry_entry_by_aas_id(aas_id=aas_id)
+
+def delete_registry_entry_by_aas_id(aas_id: str):
+    """
+    Delete a registry item by a given aas_id
+
+    Returns True if sucessfull
+    """
     r = get_requests_session().delete(f"{settings.registry_base_url}/registry/shell-descriptors/{aas_id}")
     if not r.ok:
         logging.info(f"Could not delete registry entry for aas_id: {aas_id} Reason: {r.reason} Content: {r.content}")

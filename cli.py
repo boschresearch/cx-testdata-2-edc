@@ -404,6 +404,30 @@ def list_cxids(testdata_file, bpn, show_aas_id, show_serial_part_typization):
             fetch_for(aas_id=aas_id, sm_type='serialPartTypization')
 
 
+@cli.group(help='Cleanup')
+def cleanup():
+    pass
+
+@cleanup.command('registry')
+@click.argument('bpn')
+def cleanup_registry(bpn: str):
+    aas_ids = registry_handling.discover_via_bpn(bpn)
+    for aas_id in aas_ids:
+        aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+        print(json.dumps(aas, indent=4))
+        print("Delete? 'n' to not or any other key to continue or Strg+c to cancel)")
+        confirmation = sys.stdin.read(1) # only 1 char
+        if confirmation == 'n':
+            continue
+        deleted = registry_handling.delete_registry_entry_by_aas_id(aas_id=aas_id)
+        print("Deleting...")
+        if not deleted:
+            print(f"Could not delete registry item for aas_id: {aas_id}")
+            print(f"Confirm with key press...")
+            sys.stdin.read(1) # get read confirmation ;-)
+        else:
+            print(f"Registry item deleted.")
+
 if __name__ == '__main__':
     FORMAT = '%(asctime)s %(funcName)s %(message)s'
     logging.basicConfig(filename='log.log', level=logging.DEBUG, format=FORMAT)
