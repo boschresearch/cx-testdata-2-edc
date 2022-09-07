@@ -173,12 +173,23 @@ def upsert_asset(cx_id:str, schema:str):
 
     return asset_id
 
-def upsert_policy(asset_id: str):
-    policy_id = get_db_item(asset_id, DB_POLICY_ID_MAPPINGS)
-    if policy_id:
-        upsert_contract_definition(policy_id=policy_id)
-        return policy_id
+def get_policy_endpoint_path():
+    policy_endpoint_path = '/policydefinitions'
+    if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
+        # legacy endpoint if required...
+        policy_endpoint_path = '/policies'
+    return policy_endpoint_path
 
+def get_policy(policy_id: str):
+    policy_endpoint_path = get_policy_endpoint_path()
+    r = requests.get(f"{settings.EDC_BASE_URL}{policy_endpoint_path}/{policy_id}", headers=prepare_edc_headers())
+    if not r.ok:
+        logging.debug(f"Could not fetch policy: {policy_id}. Reason: {r.reason} Content: {r.content}") # this will happen regularily
+        return None
+    j = r.json()
+    return j
+
+def upsert_policy(asset_id: str):
     new_policy_id = str(uuid4())
 
     data = {
@@ -235,11 +246,8 @@ def upsert_policy(asset_id: str):
                 "@policytype": "set"
             }
         }
-    policy_endpoint_path = '/policydefinitions'
-    if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
-        # legacy endpoint if required...
-        policy_endpoint_path = '/policies'
 
+    policy_endpoint_path = get_policy_endpoint_path()
     r = requests.post(f"{EDC_BASE_URL}{policy_endpoint_path}", json=data, headers=prepare_edc_headers())
     if not r.ok:
         logging.error(f"Could not create policy. Reason: {r.reason} Content: {r.content}")
