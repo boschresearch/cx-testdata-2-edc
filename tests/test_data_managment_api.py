@@ -19,7 +19,8 @@ def get_number_of_elements(endpoint):
         r = requests.get(endpoint, headers=prepare_data_management_auth(), params={ 'limit': NR_OF_ASSETS * 2 })
         j = r.json()
         return len(j)
-    except:
+    except Exception as ex:
+        print(ex)
         return None
 
 
