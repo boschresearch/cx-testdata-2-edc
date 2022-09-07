@@ -254,17 +254,23 @@ def upsert_policy(asset_id: str):
         return None
     with shelve.open(DB_POLICY_ID_MAPPINGS) as db:
         db[asset_id] = new_policy_id
-    upsert_contract_definition(policy_id=new_policy_id)
+    upsert_contract_definition(policy_id=new_policy_id, asset_id=asset_id)
     return new_policy_id
 
-def upsert_contract_definition(policy_id: str):
+def upsert_contract_definition(policy_id: str, asset_id: str):
     # TODO: check if already exists...
     new_id = str(uuid4())
     data = {
         "id": new_id,
         "accessPolicyId": policy_id,
         "contractPolicyId": policy_id,
-        "criteria": [],
+        "criteria": [
+            {
+                "operandLeft": "asset:prop:id",
+                "operator": "=",
+                "operandRight": asset_id
+            }
+        ],
     }
     r = requests.post(f"{EDC_BASE_URL}/contractdefinitions", json=data, headers=prepare_edc_headers())
     if not r.ok:
