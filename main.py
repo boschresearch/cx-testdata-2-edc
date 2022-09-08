@@ -81,5 +81,6 @@ if __name__ == '__main__':
     server_startup() # only run once, not for every worker
     import uvicorn
     port = os.getenv('PORT', '8080')
+    host = os.getenv('HOST', "0.0.0.0")
     workers = os.getenv('WORKERS', '3')
-    uvicorn.run("main:app", host="0.0.0.0", port=int(port), workers=int(workers), reload=False)
+    uvicorn.run("main:app", host=host, port=int(port), workers=int(workers), reload=False)
