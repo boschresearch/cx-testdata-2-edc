@@ -101,6 +101,14 @@ def discover_via_bpn(bpn: str):
 
 
 def discover(query1):
+    """
+    query1 = [
+        {
+            'key': 'ManufacturerID',
+            'value': bpn,
+        }
+    ]
+    """
     query1_str = json.dumps(query1)
     query = {
         'assetIds': query1_str
