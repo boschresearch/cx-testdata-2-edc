@@ -50,6 +50,14 @@ You can find testdata files from internal sources at e.g.: https://confluence.ca
 After the import, you can use the Submodel Endpoints with the `cx_id` as input. Try it at:
 http://localhost:8080/docs#/
 
+# CLI - command line interface
+A simple CLI for different tasks and debugging helper with the network.
+
+```
+# cleanup registry for a certain BPN - asks for confirmation before the actual deletion
+./cli.py cleanup registry BPNL00000003B5MJ
+```
+
 # Development
 ## Setup
 You may use a virtual python env

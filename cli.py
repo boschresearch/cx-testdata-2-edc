@@ -337,6 +337,24 @@ def fetch_material_for_recycling(aas_id):
 def fetch_edc_asset(edc_asset_id):
     url = f"{settings.consumer_control_plane_url}/api/v1/data/contractnegotiations"
 
+@fetch.command('catalog')
+@click.option('--out-file', help='output file path')
+#@click.option('--api-wrapper', help='Use api-wrapper instead of consumer edc')
+@click.argument('endpoint')
+def fetch_catalog(endpoint, out_file):
+    params = {
+        'providerUrl': f"{endpoint}/api/v1/ids/data",
+        'limit': 1000000000,
+    }
+    r = requests.get(f"{settings.consumer_control_plane_base_url}/api/v1/data/catalog", params=params, headers=prepare_edc_headers_consumer())
+    if not r.ok:
+        logging.error(f"Could not fetch catalog. Reason: {r.reason} Content: {r.content}")
+    j = r.json()
+    j_str = json.dumps(j, indent=4)
+    if out_file:
+        with open(out_file, 'w') as f:
+            f.write(j_str)
+    print(j_str)
 
 #####
 # fetch via api-wrapper directly
