@@ -138,6 +138,9 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
             "dataAddress": {
                 "properties": {
                     "type": "HttpData",
+                    "proxyMethod": "true",
+                    "proxyBody": "true",
+                    "proxyPath": "true",
                     "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
                 }
             }
