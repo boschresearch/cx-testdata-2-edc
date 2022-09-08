@@ -95,7 +95,17 @@ def discover_via_bpn(bpn: str):
         }
     ]
     list2 = discover(query1=query2)
-    result = list1 + list2
+
+    # with testdata 1.3.1
+    query3 = [
+        {
+            'key': 'manufacturerId',
+            'value': bpn,
+        }
+    ]
+    list3 = discover(query1=query3)
+
+    result = list1 + list2 + list3
     unique_result = list(set(result)) # just in case we have entires in both lists
     return unique_result
 
