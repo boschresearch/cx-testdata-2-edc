@@ -16,17 +16,7 @@ python ./test_data_management_api.py
 
 # Some Testing Results
 
-|nr of assets   | 0.1.1 raw catalog file size (postgres)    | 0.0.6 raw catalog size (in-memory)    | 0.1.1 raw catalog size (**in-memory**) |
-|:-------------:|:-----------------------------------------:|:-------------------------------------:|:-------------------------:|
-|**10**         | < 1 MB (asset:prop:id **100**)            | < 1 MB  (asset:prop:id 10)            | < 1 MB (asset:prop:id 10) |
-|**50**         | 63 MB  (asset:prop:id **2500**)           | < 1 MB  (asset:prop:id 50)            | 1.3 MB (asset:prop:id 50) |
-|100            | 495 MB                                    | < 1 MB  (asset:prop:id 100)           | 5 MB (asset:prop:id 100)  |
-|200            | out of heap space                         | < 1 MB  (asset:prop:id 200)           | 20 MB (asset:prop:id 200)
-
-In () the number of matches of `asset:prop:id` in the catalog result.
-
-Result with a 1:1:1 relation, meaning 1 asset -> 1 policy -> 1 contractdefinition.
-
+The issue with too big catalog size has been resolved. Make sure you have a `criteria` in your `contractdefinition` that matches your asset. If not, the catalog will explode (with product-edc release 0.1.1). Also don't use old expresions like `left` and rather new expression like `operandLeft`. The old writting would cause catalog requests to receive a 500 server error and by thus, making it unreachable.
 
 
 # Vscode Testing
