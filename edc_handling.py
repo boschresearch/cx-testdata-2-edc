@@ -120,10 +120,20 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
         "dataAddress": {
             "properties": {
                 "type": "HttpData",
+                "proxyMethod": True,
+                "proxyBody": True,
+                #"proxyPath": False, # to avoid /submodel at the end
+                #"proxyQueryParams": True,
                 "baseUrl": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
             }
         }
     }
+    # add secrets for the backen system if set
+    if settings.endpoint_base_url_internal_auth_code:
+        data['dataAddress']['properties']['authCode'] = settings.endpoint_base_url_internal_auth_code
+        data['dataAddress']['properties']['authKey'] = settings.endpoint_base_url_internal_auth_key
+    else:
+        logging.info(f"No ENDPOINT_BASE_URL_INTERNAL_AUTH_KEY provided. Please consider using it to secure your backend system.")
 
     if settings.backward_compatibility == BACKWARD_COMPATIBILITY_0_0_6:
         # some legacy code
@@ -138,9 +148,6 @@ def create_asset(cx_id: str, asset_id: str, schema: str):
             "dataAddress": {
                 "properties": {
                     "type": "HttpData",
-                    "proxyMethod": "true",
-                    "proxyBody": "true",
-                    "proxyPath": "true",
                     "endpoint": ENDPOINT_BASE_URL_INTERNAL + path + "/" + cx_id
                 }
             }

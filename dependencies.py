@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     backward_compatibility: str = '' # set to BACKWARD_COMPATIBILITY_0_0_6 if required
     # used for EDC -> endpoint communication
     endpoint_base_url_internal: str = 'http://testdata2edc:8080'
+    # authorization for that endpoint_base_url_internal (our backend system)
+    endpoint_base_url_internal_auth_key: str = 'X-Api-Key'
+    endpoint_base_url_internal_auth_code: str = Field(default='', exclude=True)
     # if given add direct (non-EDC) endpoint for it
     endpoint_base_url_external: str = ''
     registry_base_url: str = 'http://registry-service:4243'
