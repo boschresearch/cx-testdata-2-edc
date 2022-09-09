@@ -7,19 +7,32 @@
 import inspect
 import os
 import shelve
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Security, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from dependencies import DB_CX_ITEMS, ASSEMBLY_PART_RELATIONSHIP_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING, SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, MATERIAL_FOR_RECYCLING_PATH, get_first_match
+from fastapi.security import APIKeyHeader
+from dependencies import settings, DB_CX_ITEMS, ASSEMBLY_PART_RELATIONSHIP_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING, SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, MATERIAL_FOR_RECYCLING_PATH, get_first_match
 
 
 app = FastAPI(title="CX Testdata Submodel Endpoint Server for R1")
 
-
-
+# CORS configuration #
 origins = [
     "*",
 ]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"])
+
+# SECURITY - API Key configuration #
+API_KEY_NAME = settings.endpoint_base_url_internal_auth_key
+API_KEY = settings.endpoint_base_url_internal_auth_code
+
+# TODO: how to disable it in a configurable way?
+security_api_key = APIKeyHeader(name=API_KEY_NAME, auto_error=False) #auto_error only check if key exists!
+
+def check_api_key(api_key: str = Security(security_api_key)):
+    if not api_key == API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Wrong {API_KEY_NAME} value.")
+
+
 
 def get_item(catenaXId:str):
     with shelve.open(DB_CX_ITEMS, 'r') as db:
@@ -35,7 +48,7 @@ def check_params(content: str, extent: str):
     if extent != 'withBlobValue':
         raise HTTPException(status_code=501, detail="Parameter 'extent' MUST be 'withBlobValue'.")
 
-@app.get(SERIAL_PART_TYPIZATION_ENDPOINT_PATH + '/{catenaXId}', )
+@app.get(SERIAL_PART_TYPIZATION_ENDPOINT_PATH + '/{catenaXId}', dependencies=[Security(check_api_key)])
 async def get_serial_part_typization(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
     print(f"get_serial_part_typization catenaXId: {catenaXId}")
     #check_params(content=content, extent=extent)
@@ -47,7 +60,7 @@ async def get_serial_part_typization(catenaXId: str, content: str = Query(exampl
     except Exception:
         return {}
 
-@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}')
+@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}', dependencies=[Security(check_api_key)])
 async def get_assembly_part_relationship(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
     print(f"get_assembly_part_relationship catenaXId: {catenaXId}")
     #check_params(content=content, extent=extent)
@@ -58,7 +71,7 @@ async def get_assembly_part_relationship(catenaXId: str, content: str = Query(ex
     except Exception:
         return {}
 
-@app.get(MATERIAL_FOR_RECYCLING_PATH + '/{catenaXId}')
+@app.get(MATERIAL_FOR_RECYCLING_PATH + '/{catenaXId}', dependencies=[Security(check_api_key)])
 async def get_material_for_recycling(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
     print(f"get_material_for_recycling catenaXId: {catenaXId}")
     #check_params(content=content, extent=extent)
