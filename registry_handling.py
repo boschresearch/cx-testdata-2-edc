@@ -162,6 +162,36 @@ def get_all(page_size: int = 10, page: int = 1):
     j = r.json()
     return j['items']
 
+def get_endpoint_for(aas, endpoint_type: str):
+    # now, idShort is used with different strings and we should correctly lookup the information
+    # from the semanticId.value list
+    # since those strings are not perfect yet, we'll just search the string if it contains
+    # the 'relevant' part
+    ep_type_lower = endpoint_type.lower()
+    for sm in aas['submodelDescriptors']:
+        for sid in sm['semanticId']['value']:
+            sid_lower = sid.lower()
+            if ep_type_lower in sid_lower:
+                return sm['endpoints'][0]['protocolInformation']['endpointAddress']
+
+    # this is the bug part, if previous part didn't work, we try the idShort option
+    ep = get_endpoint_from_idshort(aas, endpoint_type) # Release 1 bug / AAS-Proxy bug
+    return ep
+
+
+def get_endpoint_from_idshort(aas, endpoint_type: str):
+    """
+    Since AAS-Proxy bug https://github.com/catenax-ng/catenax-at-home/issues/46
+
+    we use idShort for now to identify the right endpoint
+
+    TODO: needs to be fixed.
+    TODO: Is this really a list of endpoints?
+    """
+    for sm in aas['submodelDescriptors']:
+        if sm['idShort'] == endpoint_type:
+            return sm['endpoints'][0]['protocolInformation']['endpointAddress']
+    return None
 
 def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str):
     """
@@ -231,7 +261,6 @@ def prepare_specific_asset_ids(item):
         return [IdentifierKeyValuePair(**x) for x in sp[0].get('localIdentifiers', []) ] # transform to the typed version of it
     return None
 
-
 def upsert_registry_entry(item: dict, bpn: str):
     """
     Register the given item in the registry if it doesn't exist yet. Existence check by the
@@ -255,19 +284,25 @@ def upsert_registry_entry(item: dict, bpn: str):
             specific_asset_ids=specific_asset_ids,
             submodel_descriptors=submodels
         )
-        data = aas_descriptor.dict()
-        #print(json.dumps(data, indent=4))
-        r = get_requests_session().post(f"{settings.registry_base_url}/registry/shell-descriptors", json=data)
-        if not r.ok:
-            logging.error(f"Could not create AAS. status_code: {r.status_code} content: {r.content}")
-            return None
-        result = r.json()
-        aas_created = AssetAdministrationShellDescriptor(**result)
+        aas_created = create(aas=aas_descriptor)
         print(f"AAS created for cx_id: {cxId} AAS ID: {aas_created.identification} ")
         return aas_created
     else:
         # already exists
         print(f"AAS already exists for cx_id: {cxId} AAS ID: {ga_id_lookup}")
+
+def create(aas: AssetAdministrationShellDescriptor) -> AssetAdministrationShellDescriptor:
+    """
+    Actually CREATE the AAS in the registry
+    """
+    data = aas.dict()
+    r = get_requests_session().post(f"{settings.registry_base_url}/registry/shell-descriptors", json=data)
+    if not r.ok:
+        logging.error(f"Could not create AAS. status_code: {r.status_code} content: {r.content}")
+        return None
+    result = r.json()
+    aas_created = AssetAdministrationShellDescriptor(**result)
+    return aas_created
 
 def delete_registry_entry(cx_id: str):
     """

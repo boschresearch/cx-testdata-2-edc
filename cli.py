@@ -87,7 +87,7 @@ def search_all_stat(page: int, page_size: int):
     for aas in all:
         #print(json.dumps(aas, indent=4))
         try:
-            url = get_endpoint_for(aas=aas, endpoint_type='serialPartTypization')
+            url = registry_handling.get_endpoint_for(aas=aas, endpoint_type='serialPartTypization')
             """
             if not "cxdev" in url:
                 print(url)
@@ -201,37 +201,6 @@ def edc_negotiate(connector_endpoint, edc_asset_id):
 def fetch():
     pass
 
-def get_endpoint_for(aas, endpoint_type: str):
-    # now, idShort is used with different strings and we should correctly lookup the information
-    # from the semanticId.value list
-    # since those strings are not perfect yet, we'll just search the string if it contains
-    # the 'relevant' part
-    ep_type_lower = endpoint_type.lower()
-    for sm in aas['submodelDescriptors']:
-        for sid in sm['semanticId']['value']:
-            sid_lower = sid.lower()
-            if ep_type_lower in sid_lower:
-                return sm['endpoints'][0]['protocolInformation']['endpointAddress']
-
-    # this is the bug part, if previous part didn't work, we try the idShort option
-    ep = get_endpoint_from_idshort(aas, endpoint_type) # Release 1 bug / AAS-Proxy bug
-    return ep
-
-
-def get_endpoint_from_idshort(aas, endpoint_type: str):
-    """
-    Since AAS-Proxy bug https://github.com/catenax-ng/catenax-at-home/issues/46
-
-    we use idShort for now to identify the right endpoint
-
-    TODO: needs to be fixed.
-    TODO: Is this really a list of endpoints?
-    """
-    for sm in aas['submodelDescriptors']:
-        if sm['idShort'] == endpoint_type:
-            return sm['endpoints'][0]['protocolInformation']['endpointAddress']
-    return None
-
 def fetch_for(aas_id: str, sm_type: str):
     """
     given AAS ID
@@ -253,7 +222,7 @@ def fetch_for_aas_type_list(aas, sm_types):
         raise Exception(f"Could not find aas for aas_id: {aas['identification']}")
     url = None
     for sm_type in sm_types:
-        url = get_endpoint_for(aas=aas, endpoint_type=sm_type)
+        url = registry_handling.get_endpoint_for(aas=aas, endpoint_type=sm_type)
         if url:
             break
     start = time.time()
