@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     wrapper_basic_auth_password: str = Field(default='somepassword', exclude=True)
     # if not via proxy, we also need the api-wrapper endpoint
     api_wrapper_base_url: str = ''
+    # case stuty related, but also useful for others
+    my_bpn: str = ''
 
     class Config:
         env_file = os.getenv('ENV_FILE', '.env') # if ENV_FILE is not set, we read env vars from .env by default
