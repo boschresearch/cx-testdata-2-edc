@@ -162,6 +162,36 @@ def get_all(page_size: int = 10, page: int = 1):
     j = r.json()
     return j['items']
 
+def get_endpoint_for(aas, endpoint_type: str):
+    # now, idShort is used with different strings and we should correctly lookup the information
+    # from the semanticId.value list
+    # since those strings are not perfect yet, we'll just search the string if it contains
+    # the 'relevant' part
+    ep_type_lower = endpoint_type.lower()
+    for sm in aas['submodelDescriptors']:
+        for sid in sm['semanticId']['value']:
+            sid_lower = sid.lower()
+            if ep_type_lower in sid_lower:
+                return sm['endpoints'][0]['protocolInformation']['endpointAddress']
+
+    # this is the bug part, if previous part didn't work, we try the idShort option
+    ep = get_endpoint_from_idshort(aas, endpoint_type) # Release 1 bug / AAS-Proxy bug
+    return ep
+
+
+def get_endpoint_from_idshort(aas, endpoint_type: str):
+    """
+    Since AAS-Proxy bug https://github.com/catenax-ng/catenax-at-home/issues/46
+
+    we use idShort for now to identify the right endpoint
+
+    TODO: needs to be fixed.
+    TODO: Is this really a list of endpoints?
+    """
+    for sm in aas['submodelDescriptors']:
+        if sm['idShort'] == endpoint_type:
+            return sm['endpoints'][0]['protocolInformation']['endpointAddress']
+    return None
 
 def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str):
     """
