@@ -311,12 +311,13 @@ def fetch_for_aas_ids(aas_ids, sm_types):
         except Exception as ex:
             failed.append(aas_id)
             logging.error(f"failed to fetch for aas_id: {aas_id}")
+            print(f"failed to fetch for aas_id: {aas_id}")
             continue
         print(json.dumps(data, indent=4))
         good.append(aas_id)
-    logging.info(f"good: {good}")
-    logging.info(f"failed: {failed}")
-    logging.info(f"numbers: good items: {len(good)} failed items: {len(failed)}")
+    print(f"good: {good}")
+    print(f"failed: {failed}")
+    print(f"numbers: good items: {len(good)} failed items: {len(failed)}")
 
 
 
@@ -344,7 +345,7 @@ def fetch_edc_asset(edc_asset_id):
 def fetch_catalog(endpoint, out_file):
     params = {
         'providerUrl': f"{endpoint}/api/v1/ids/data",
-        'limit': 1000000000,
+        'limit': 1000,
     }
     r = requests.get(f"{settings.consumer_control_plane_base_url}/api/v1/data/catalog", params=params, headers=prepare_edc_headers_consumer())
     if not r.ok:
