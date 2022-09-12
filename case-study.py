@@ -1,13 +1,16 @@
 import logging
 import registry_handling as reg
 import edc_handling as edc
+import aas_helper
 
-from fastapi import FastAPI, Body, Security, HTTPException, status
+from fastapi import FastAPI, Body, Security, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 import json
 import os
+from datetime import datetime
+from dependencies import ASSEMBLY_PART_RELATIONSHIP_PATH, settings
 
 app = FastAPI(title='Traceability Case Study Backend')
 
@@ -16,6 +19,10 @@ origins = [
 ]
 
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=['*'], allow_headers=['*'])
+
+# prepare data directory
+CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR = os.path.join(os.path.dirname(__file__), 'cs-assemblypartrelationship-data')
+os.makedirs(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR, exist_ok=True)
 
 
 API_KEY_NAME = 'X-Api-Key'
@@ -39,38 +46,135 @@ def find(sub_component_entries: list, human_key: str = None, vda_key: str = None
 
 @app.post('/', dependencies=[Security(check_api_key)])
 def post(body: dict = Body(...)):
+    """
+    Receives data from the DMC scanning Web App.
+    """
     print(json.dumps(body, indent=4))
+
+    child_parts = []
+    # supplier parts built into main - first check all of those and raise errors if they don't exist
     for sub in body['sub']:
-        artikel_nr = find(sub, human_key='ArtikelNummer')
+        sachnr_hersteller = find(sub, human_key='SachnummerHersteller')
         chargen_nr = find(sub, human_key='Charge')
 
-        if not artikel_nr and not chargen_nr:
-            logging.error(f"Sub component does not contain ArtikelNummer and Charge. {json.dumps(sub, indent=4)}")
-            # TODO: return error?
-            continue
+        if not sachnr_hersteller or not chargen_nr:
+            msg = f"Sub component does not contain ArtikelNummer and Charge. {json.dumps(sub, indent=4)}"
+            logging.error(msg)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
 
-        query = []
-        if artikel_nr:
-            query.append(
-                {
-                    'key': 'manufacturerPartId',
-                    'value': artikel_nr,
-                }
-            )
-        if chargen_nr:
-            query.append(
-                {
-                    'key': 'partInstanceId',
-                    'value': chargen_nr
-                }
-            )
-        aas_ids = reg.discover(query1=query)
-        if len(aas_ids) == 0:
-            msg = f"Could not find item in registry for query: {json.dumps(query, indent=4)}"
+        aas_ids = query(artikel_nr=sachnr_hersteller, chargen_nr=chargen_nr)
+        if len(aas_ids) != 1:
+            msg = f"Could not find exactly 1 item in the registry for sub component. for artikel_nr: {sachnr_hersteller} chargen_nr: {chargen_nr}"
             logging.error(msg)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
+        sub_aas_id = aas_ids[0]
+        sub_aas = reg.lookup_by_aas_id(sub_aas_id)
+        sub_cx_id = get_cx_id_from_aas(aas=sub_aas)
+        if not sub_cx_id:
+            #TODO
+            pass
+        now = datetime.now()
+        child_parts.append(
+            {
+                "quantity": {
+                    "quantityNumber": 1
+                },
+                "lifecycleContext" : "AsBuilt",
+                "assembledOn" : now.isoformat(),
+                "lastModifiedOn" : now.isoformat(),
+                "childCatenaXId" : sub_cx_id
+            }
+        )
+    print(child_parts)
+
+    # main is our own component
+    main = body['main']
+    sachnr_hersteller = find(main, human_key='SachnummerHersteller')
+    chargen_nr = find(main, human_key='Charge')
+    main_cx_id = None
+    main_aas_ids = query(artikel_nr=sachnr_hersteller, chargen_nr=chargen_nr)
+    if len(main_aas_ids) > 1:
+        msg = f"more than 1 AAS found for main component artikel_nr: {sachnr_hersteller} and chargen_nr: {chargen_nr}"
+        logging.error(msg)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
+    if len(main_aas_ids) == 0:
+        logging.info(f"main component does not yet exist in the registry. main: {json.dumps(main)}")
+        if not settings.my_bpn:
+            msg = f"BPN not known. Please consult your application admin to configure env MY_BPN."
+            logging.error(msg)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
+        local_identifiers = {
+            'manufacturerId': settings.my_bpn,
+            'manufacturerPartId': sachnr_hersteller,
+            'manufacturerPartInstanceId': chargen_nr,
+        }
+        main_cx_id = aas_helper.generate_uuid()
+        aas = aas_helper.build_aas(local_identifiers=local_identifiers, cx_id=main_cx_id)
+        submodel = aas_helper.build_submodel(endpoint='http://localhost')
+        aas.submodel_descriptors = submodel
+        print(aas)
+        aas_created = reg.create(aas=aas)
+
+    if len(main_aas_ids) == 1:
+        main_aas = reg.lookup_by_aas_id(main_aas_ids[0])
+        spr = reg.get_endpoint_for(aas=main_aas, sm_type='serialPartRelationship')
+        apr = reg.get_endpoint_for(aas=main_aas, sm_type='assemblyPartRelationship')
+        # What to do depends on config
+
+    # now let's prepare the data for the actual submodel endpoint
+    sub_data = json.dumps(child_parts)
+    fn = os.path.join(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR, main_cx_id)
+    with (open(fn, 'w')) as f:
+        f.write(sub_data)
+    return {}
 
 
+@app.get(ASSEMBLY_PART_RELATIONSHIP_PATH + '/{catenaXId}', dependencies=[Security(check_api_key)])
+async def get_assembly_part_relationship(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
+    logging.debug(f"get_assembly_part_relationship catenaXId: {catenaXId}")
+    if '/' in catenaXId or '.' in catenaXId:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="ID contains invalid chars") # basic security check against relative path issue
+    fn = os.path.join(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR, catenaXId) # after the check this should be ok, not perfect, but ok
+    if not os.path.isfile(fn):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"No data found for cx_id: {catenaXId}")
+    data = ''
+    with (open(fn, 'r')) as f:
+        data = f.read()
+
+    child_data = json.loads(data)
+    apr = {
+        'catenaXId': catenaXId,
+        'childParts': child_data
+    }
+
+    return apr
+
+
+
+def get_cx_id_from_aas(aas):
+    try:
+        return aas['globalAssetId']['value'][0]
+    except:
+        return None
+
+def query(artikel_nr: str, chargen_nr: str):
+    query = []
+    if artikel_nr:
+        query.append(
+            {
+                'key': 'manufacturerPartId',
+                'value': artikel_nr,
+            }
+        )
+    if chargen_nr:
+        query.append(
+            {
+                'key': 'partInstanceId',
+                'value': chargen_nr
+            }
+        )
+    aas_ids = reg.discover(query1=query)
+    return aas_ids
 
 
 if __name__ == '__main__':
