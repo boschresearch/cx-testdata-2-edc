@@ -1,4 +1,8 @@
+#!/usr/bin/env python3
+
+import argparse
 import logging
+import sys
 import registry_handling as reg
 import edc_handling as edc
 import aas_helper
@@ -176,8 +180,30 @@ def query(artikel_nr: str, chargen_nr: str):
     aas_ids = reg.discover(query1=query)
     return aas_ids
 
+def delete_from_registry():
+    """
+    Look into the data directory and from the file names (cx_id) know which elements
+    from the registry to delete.
+    """
+    files = os.listdir(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR)
+    for file in files:
+        if not file.startswith('urn:uuid:'):
+            continue
+        cx_id = file
+        deleted = reg.delete_registry_entry(cx_id=cx_id)
+        print(deleted)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Traceability Case Study Backend. Start without any args to start the server.")
+    # bool argument python 3.9 backward compatible way
+    parser.add_argument('--delete-registry', action='store_true', default=False,
+            help='Delete AAS elements known to this backend from the registry (by cx_id)')
+    
+    args = parser.parse_args()
+    if args.delete_registry:
+        delete_from_registry()
+        sys.exit()
+
     import uvicorn
     port = os.getenv('PORT', '8080')
     workers = os.getenv('WORKERS', '3')
