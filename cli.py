@@ -21,7 +21,7 @@ import importer
 def cli():
     pass
 
-@cli.group(help='Search for AAS ID or GlobalAssetID')
+@cli.group(help='Search for AAS ID or CxId')
 def search():
     pass
 
@@ -56,13 +56,13 @@ def extract_edc_information(submodel_descriptor_endpoint_url: str):
     return {'bpn': bpn, 'edc_asset_id': edc_asset_id, 'connector_ednpoint': connector_endpoint}
 
 
-@search.command('asset')
-@click.argument('global_asset_id')
-def search_asset(global_asset_id):
-    logging.info(f"search_asset() global_asset_id: {global_asset_id}")
-    aas_ids = registry_handling.lookup_by_globalAssetIds_all(global_asset_id)
+@search.command('cxid')
+@click.argument('cxid')
+def search_asset(cxid):
+    logging.info(f"search_asset() cxid: {cxid}")
+    aas_ids = registry_handling.lookup_by_globalAssetIds_all(cxid)
     for aas_id in aas_ids:
-        print(aas_id)
+        print(f"cxid: {cxid} -> aas_id: {aas_id}")
 
 @search.command('all')
 def search_all():
