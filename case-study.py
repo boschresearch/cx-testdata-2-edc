@@ -114,7 +114,9 @@ def post(body: dict = Body(...)):
         }
         main_cx_id = aas_helper.generate_uuid()
         aas = aas_helper.build_aas(local_identifiers=local_identifiers, cx_id=main_cx_id)
-        submodel = aas_helper.build_submodel(endpoint='http://localhost')
+        main_submodel_id_apr = aas_helper.generate_uuid() # I think we don't need to stre this - we only need this further down to create the edc asset
+        apr_edc_endpoint = reg.prepare_edc_submodel_endpoint_address(aas_id=aas.identification, sm_id=main_submodel_id_apr, bpn=settings.my_bpn)
+        submodel = aas_helper.build_submodel(endpoint=apr_edc_endpoint)
         aas.submodel_descriptors = submodel
         print(aas)
         aas_created = reg.create(aas=aas)
@@ -124,6 +126,10 @@ def post(body: dict = Body(...)):
         spr = reg.get_endpoint_for(aas=main_aas, sm_type='serialPartRelationship')
         apr = reg.get_endpoint_for(aas=main_aas, sm_type='assemblyPartRelationship')
         # What to do depends on config
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="We already found an AAS for the main component. The handling of this situation is not implemented yet."
+        )
 
     # now let's prepare the data for the actual submodel endpoint
     sub_data = json.dumps(child_parts)
