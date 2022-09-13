@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+from edc_data_management import EdcDataManagement
 import registry_handling as reg
 import edc_handling as edc
 import aas_helper
@@ -96,6 +97,7 @@ def post(body: dict = Body(...)):
     sachnr_hersteller = find(main, human_key='SachnummerHersteller')
     chargen_nr = find(main, human_key='Charge')
     main_cx_id = None
+    main_submodel_id_apr = None
     main_aas_ids = query(artikel_nr=sachnr_hersteller, chargen_nr=chargen_nr)
     if len(main_aas_ids) > 1:
         msg = f"more than 1 AAS found for main component artikel_nr: {sachnr_hersteller} and chargen_nr: {chargen_nr}"
@@ -120,6 +122,10 @@ def post(body: dict = Body(...)):
         aas.submodel_descriptors = submodel
         print(aas)
         aas_created = reg.create(aas=aas)
+
+        edc_asset_id = f"{aas.identification}-{main_submodel_id_apr}"
+        edc_created = create_edc_asset(asset_id=edc_asset_id, endpoint=apr_edc_endpoint)
+        print(edc_created)
 
     if len(main_aas_ids) == 1:
         main_aas = reg.lookup_by_aas_id(main_aas_ids[0])
@@ -159,6 +165,19 @@ async def get_assembly_part_relationship(catenaXId: str, content: str = Query(ex
 
     return apr
 
+
+def create_edc_asset(asset_id: str, endpoint: str):
+    """
+    Creates the EDC relevat parts, that includes, asset, policy, contractdefinition
+    """
+    dm = EdcDataManagement(
+            data_management_base_url=settings.edc_base_url,
+            data_management_auth_key='X-Api-Key',
+            data_management_auth_code=settings.provider_edc_api_key,
+            backend_auth_key=settings.endpoint_base_url_internal_auth_key,
+            backend_auth_code=settings.endpoint_base_url_internal_auth_code,
+    )
+    return dm.create_asset_and_friends(asset_id=asset_id, endpoint=endpoint)
 
 
 def get_cx_id_from_aas(aas):
