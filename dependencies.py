@@ -51,8 +51,8 @@ class Settings(BaseSettings):
 settings: Settings = Settings()
 # print the settings that we actually use, but leave out the secret field
 s_str = settings.json(indent=4)
-print('settings:')
-print(s_str)
+#print('settings:')
+#print(s_str)
 
 PROVIDER_CONTROL_PLANE_BASE_URL = settings.provider_control_plane_base_url
 ENDPOINT_BASE_URL_INTERNAL = settings.endpoint_base_url_internal
