@@ -8,3 +8,9 @@ openapi/src
 logs/
 tmp/
 .*
+cs-assemblypartrelationship-data/
+*.log
+venv/
+tmp*.txt
+tmp*.json
+
