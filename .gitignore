@@ -13,4 +13,11 @@ cs-assemblypartrelationship-data/
 venv/
 tmp*.txt
 tmp*.json
-
+*_internal.*
+*.pem
+*.key
+*.deb
+urns.txt
+notes*.md
+log.log*
+docker-compose*.yaml
