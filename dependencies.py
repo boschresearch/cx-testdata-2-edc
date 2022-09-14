@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     api_wrapper_base_url: str = ''
     # case stuty related, but also useful for others
     my_bpn: str = ''
+    cs_backend_base_url: str = 'http://localhost'
 
     class Config:
         env_file = os.getenv('ENV_FILE', '.env') # if ENV_FILE is not set, we read env vars from .env by default
