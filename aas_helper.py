@@ -45,13 +45,14 @@ def build_aas(local_identifiers:dict, aas_id: str = '', cx_id: str = '', id_shor
     )
     return aas_descriptor
 
-def build_submodel(endpoint: str, semantic_id_schema:str = '', submodel_id: str = '') -> SubmodelDescriptor:
+def build_submodel(endpoint: str, semantic_id_schema:str = '', submodel_id: str = '', id_short: str = '') -> SubmodelDescriptor:
     """
     
     """
     if not submodel_id:
         submodel_id = generate_uuid()
-    id_short = generate_uuid()
+    if not id_short:
+        id_short = 'assemblyPartRelationship' # TODO
     if not semantic_id_schema:
         #TODO
         semantic_id_schema = 'urn:bamm:io.catenax.assembly_part_relationship:1.1.0#AssemblyPartRelationship'
