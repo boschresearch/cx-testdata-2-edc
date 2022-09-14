@@ -28,7 +28,7 @@ class EdcDataManagement():
         self.backend_auth_key = backend_auth_key
 
     def create_asset_and_friends(self, asset_id: str, endpoint: str):
-        self.create_asset(asset_id=asset_id, endpoint=endpoint)
+        asset_id = self.create_asset(asset_id=asset_id, endpoint=endpoint)
         policy_id = self.create_policy(asset_id=asset_id)
         contract_definition_id = self.create_contract_definition(policy_id=policy_id, asset_id=asset_id)
         return {
@@ -49,11 +49,19 @@ class EdcDataManagement():
             "dataAddress": {
                 "properties": {
                     "type": "HttpData",
-                    "endpoint": endpoint
+                    "proxyMethod": True,
+                    "proxyBody": True,
+                    #"proxyPath": False, # to avoid /submodel at the end
+                    #"proxyQueryParams": True,
+                    "baseUrl": endpoint
                 }
             }
-
         }
+        # add secrets for the backen system if set
+        if self.backend_auth_code:
+            data['dataAddress']['properties']['authCode'] = self.backend_auth_code
+            data['dataAddress']['properties']['authKey'] = self.backend_auth_key
+
         r = requests.post(f"{self.data_management_base_url}/assets", json=data, headers=self._prepare_data_management_auth())
         if not r.ok:
             return None
