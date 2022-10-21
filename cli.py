@@ -66,7 +66,7 @@ def search_asset(cxid):
 
 @search.command('all')
 def search_all():
-    all = registry_handling.get_all()
+    all = registry_handling.get_all(page_size=1000000000)
     for aas in all:
         print(json.dumps(aas, indent=4))
         input("")
@@ -314,7 +314,7 @@ def fetch_edc_asset(edc_asset_id):
 def fetch_catalog(endpoint, out_file):
     params = {
         'providerUrl': f"{endpoint}/api/v1/ids/data",
-        'limit': 1000,
+        'limit': 1000000000,
     }
     r = requests.get(f"{settings.consumer_control_plane_base_url}/api/v1/data/catalog", params=params, headers=prepare_edc_headers_consumer())
     if not r.ok:
