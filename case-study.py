@@ -106,6 +106,8 @@ def post(body: dict = Body(...)):
     # main is our own component
     main = body['main']
     sachnr_hersteller = find(main, human_key='SachnummerHersteller')
+    artikel_nr = find(main, vda_key='P') # aka customerPartId
+    manufacturer_id = find(main, vda_key='V') # aka manufactuererId (needs mapping to BPN if it is not a BPN yet!)
     chargen_nr = find(main, human_key='Charge')
     main_cx_id = None
     main_submodel_id_apr = None
@@ -116,15 +118,30 @@ def post(body: dict = Body(...)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
     if len(main_aas_ids) == 0:
         logging.info(f"main component does not yet exist in the registry. main: {json.dumps(main)}")
-        if not settings.my_bpn:
-            msg = f"BPN not known. Please consult your application admin to configure env MY_BPN."
-            logging.error(msg)
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
-        local_identifiers = {
-            'manufacturerId': settings.my_bpn,
-            'manufacturerPartId': sachnr_hersteller,
-            'manufacturerPartInstanceId': chargen_nr,
-        }
+
+        local_identifiers = {}
+        """
+        Details in the CX Spec:
+        https://confluence.catena-x.net/pages/viewpage.action?pageId=40502166#id-(TRS)%F0%9F%93%9CDataProvisioning(ImplementationSpecification)-SpecificAssetIDsforSerializedParts
+        """
+        if manufacturer_id and manufacturer_id.startswith('BPN'):
+            local_identifiers['manufacturerId'] = manufacturer_id
+        else:
+            if not settings.my_bpn:
+                msg = f"BPN not known. Please consult your application admin to configure env MY_BPN."
+                logging.error(msg)
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
+            local_identifiers['manufacturerId'] = settings.my_bpn
+
+        if sachnr_hersteller:
+            local_identifiers['manufacturerPartId'] = sachnr_hersteller
+
+        if artikel_nr:
+            local_identifiers['customerPartId'] = artikel_nr
+
+        if chargen_nr:
+            local_identifiers['partInstanceId'] = chargen_nr
+
         main_cx_id = aas_helper.generate_uuid()
         aas = aas_helper.build_aas(local_identifiers=local_identifiers, cx_id=main_cx_id)
         main_submodel_id_apr = aas_helper.generate_uuid() # I think we don't need to stre this - we only need this further down to create the edc asset
@@ -141,8 +158,8 @@ def post(body: dict = Body(...)):
 
     if len(main_aas_ids) == 1:
         main_aas = reg.lookup_by_aas_id(main_aas_ids[0])
-        spr = reg.get_endpoint_for(aas=main_aas, sm_type='serialPartRelationship')
-        apr = reg.get_endpoint_for(aas=main_aas, sm_type='assemblyPartRelationship')
+        spr = reg.get_endpoint_for(aas=main_aas, endpoint_type='serialPartTypization')
+        apr = reg.get_endpoint_for(aas=main_aas, endpoint_type='assemblyPartRelationship')
         # What to do depends on config
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
