@@ -63,13 +63,13 @@ REGISTRY_BASE_URL = settings.registry_base_url
 EDC_BASE_URL = settings.edc_base_url
 EDC_API_KEY = settings.edc_api_key
 
-SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING = '/schema/AssemblyPartRelationship/'
-SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING = '/schema/SerialPartTypization/'
-SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING = '/schema/MaterialForRecycling/'
-SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING = '/schema/TestDataContainer/'
-SCHEMA_AAS_LOOKUP_STRING = '/schema/AAS/'
+SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING = 'AssemblyPartRelationship'
+SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING = 'SerialPartTypization'
+SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING = 'MaterialForRecycling'
+SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING = 'TestDataContainer'
+SCHEMA_AAS_LOOKUP_STRING = '/schema/AAS/' # not used any more
 
-CX_SCHEMA_LOOKUP_STRING = '/schema/'
+CX_SCHEMA_LOOKUP_STRING = 'urn:bamm:io.catenax.' # has changed too many times. works, but needs some imporvements
 
 SERIAL_PART_TYPIZATION_ENDPOINT_PATH = '/serialparttypization'
 ASSEMBLY_PART_RELATIONSHIP_PATH = '/assemblypartrelationship'
