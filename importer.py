@@ -120,6 +120,18 @@ if __name__ == '__main__':
         delete_db_all(dbname=DB_CX_ITEMS)
         delete_db_all(dbname=DB_ID_MAPPINGS)
         delete_db_all(dbname=DB_POLICY_ID_MAPPINGS)
+        try:
+            os.remove(DB_CX_ITEMS)
+        except:
+            pass
+        try:
+            os.remove(DB_ID_MAPPINGS)
+        except:
+            pass
+        try:
+            os.remove(DB_POLICY_ID_MAPPINGS)
+        except:
+            pass
     else:
         upsert_assets_from_cx_items()
         upsert_registry_entry_from_cx_items(bpn=args.import_for)
