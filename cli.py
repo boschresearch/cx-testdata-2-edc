@@ -338,12 +338,13 @@ def fetch_edc_asssubUrlet_via_wrapper(connector_url, edc_asset_id, raw_data):
     params = {
         'provider-connector-url': connector_url
     }
+    url = f"{settings.api_wrapper_base_url}/{edc_asset_id}/"
     if not raw_data:
         # assuming AAS Submodel with required params
         params['content'] = 'value'
         params['extent'] = 'withBlobValue'
+        url = f"{settings.api_wrapper_base_url}/{edc_asset_id}/submodel"
 
-    url = f"{settings.api_wrapper_base_url}/{edc_asset_id}/submodel"
     logging.info(f"fetch_edc_asssubUrlet_via_wrapper: {url} \n params: {params}")
     r = requests.get(
         url,
