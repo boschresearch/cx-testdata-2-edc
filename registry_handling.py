@@ -9,6 +9,7 @@ import sys
 import os
 import logging
 import json
+import base64
 import requests
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from aas.registry.models.identifier_key_value_pair import IdentifierKeyValuePair
@@ -193,11 +194,16 @@ def get_endpoint_from_idshort(aas, endpoint_type: str):
             return sm['endpoints'][0]['protocolInformation']['endpointAddress']
     return None
 
-def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str):
+def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str = ''):
     """
     # {{providerControlPlaneDockerInternal}}/{{providerBpn}}/{{digitalTwinId}}-{{digitalTwinSubmodelId}}
     """
-    return f"{PROVIDER_CONTROL_PLANE_BASE_URL}/{bpn}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
+    url = f"{settings.endpoint_base_url_external}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
+    if bpn:
+        # old behavior. BPN is not required in the path any more!
+        url = f"{PROVIDER_CONTROL_PLANE_BASE_URL}/{bpn}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
+
+    return url
 
 def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str):
     """
@@ -290,6 +296,35 @@ def upsert_registry_entry(item: dict, bpn: str):
     else:
         # already exists
         print(f"AAS already exists for cx_id: {cxId} AAS ID: {ga_id_lookup}")
+
+def exists(aas_id: str) -> bool:
+    """
+    Check if the given aas_id exists in the registry.
+    False if not.
+    """
+    b64_aas_id = base64.urlsafe_b64encode(aas_id)
+    r = get_requests_session().get(f"{settings.registry_base_url}/registry/shell-descriptors/{b64_aas_id}")
+    if r.status_code == 200:
+        return True
+
+    return False
+
+def update_submodel(aas: AssetAdministrationShellDescriptor, submodel: SubmodelDescriptor) -> SubmodelDescriptor:
+    """
+    Updates the SM Descriptor.
+    Returns the new one or None
+    """
+    url = f"{settings.registry_base_url}/registry/shell-descriptors/{aas.identification}/submodel-descriptors/{submodel.identification}"
+    data = submodel.dict()
+    print(json.dumps(data, indent=4))
+    print(url)
+    r = get_requests_session().put(url, json=data)
+    if not r.ok:
+        logging.error(f"Could not update submodel aas_id: {aas.identification}")
+        return None
+    j = r.json()
+    sm_created = SubmodelDescriptor.parse_obj(j)
+    return sm_created
 
 def create(aas: AssetAdministrationShellDescriptor) -> AssetAdministrationShellDescriptor:
     """

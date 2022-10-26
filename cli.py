@@ -14,6 +14,7 @@ from edc_handling import prepare_edc_headers_consumer, prepare_edc_headers_provi
 import registry_handling
 from dependencies import settings
 import importer
+from aas_helper import extract_edc_information
 
 
 
@@ -44,17 +45,6 @@ def print_out_edc_assets(aas_obj):
         #print(sm)
         edc_info = extract_edc_information(sm)
         print(edc_info)
-
-def extract_edc_information(submodel_descriptor_endpoint_url: str):
-    """
-    Extracts the asset_id from a given URL
-    """
-    url = urlparse(submodel_descriptor_endpoint_url)
-    bpn = url.path.split('/')[1]
-    edc_asset_id = url.path.split('/')[2]
-    connector_endpoint = url.scheme + '://' + url.netloc
-    return {'bpn': bpn, 'edc_asset_id': edc_asset_id, 'connector_ednpoint': connector_endpoint}
-
 
 @search.command('cxid')
 @click.argument('cxid')

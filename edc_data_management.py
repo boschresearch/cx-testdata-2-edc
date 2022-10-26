@@ -27,6 +27,12 @@ class EdcDataManagement():
         self.backend_auth_code = backend_auth_code
         self.backend_auth_key = backend_auth_key
 
+    def exists(self, asset_id: str) -> bool:
+        r = requests.get(f"{self.data_management_base_url}/assets/{asset_id}", headers=self._prepare_data_management_auth())
+        if not r.ok:
+            return False
+        return True
+
     def create_asset_and_friends(self, asset_id: str, endpoint: str):
         asset_id = self.create_asset(asset_id=asset_id, endpoint=endpoint)
         policy_id = self.create_policy(asset_id=asset_id)

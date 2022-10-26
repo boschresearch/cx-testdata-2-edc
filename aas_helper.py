@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from uuid import uuid4
+from urllib.parse import urlparse
 
 from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from aas.registry.models.identifier_key_value_pair import IdentifierKeyValuePair
@@ -81,3 +82,33 @@ def build_submodel(endpoint: str, semantic_id_schema:str = '', submodel_id: str 
 
 def generate_uuid():
     return f"urn:uuid:{uuid4()}"
+
+def get_global_asset_id(aas) -> str:
+    """
+    Tries to return the 1 (!) of the list (which is typically the only one in our use cases!)
+    """
+    try:
+        return aas['globalAssetId']['value'][0]
+    except:
+        pass
+    return None
+
+def extract_edc_information(submodel_descriptor_endpoint_url: str):
+    """
+    Extracts the asset_id from a given URL
+    """
+    url = urlparse(submodel_descriptor_endpoint_url)
+    bpn = url.path.split('/')[1]
+    edc_asset_id = url.path.split('/')[2]
+    connector_endpoint = url.scheme + '://' + url.netloc
+    return {'bpn': bpn, 'edc_asset_id': edc_asset_id, 'connector_ednpoint': connector_endpoint}
+
+def get_submodel_id_for_endpoint(aas: AssetAdministrationShellDescriptor, endpoint: str) -> str:
+    """
+    Go through all endpoints and find the given endpoint and return its submodel 'identification'
+    """
+    for sm in aas.submodel_descriptors:
+        for ep in sm.endpoints:
+            if ep.protocol_information.endpoint_address == endpoint:
+                return sm.identification
+    return None
