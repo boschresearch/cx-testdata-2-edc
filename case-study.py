@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from edc_data_management import EdcDataManagement
 import registry_handling as reg
 import edc_handling as edc
@@ -59,12 +60,11 @@ def post(body: dict = Body(...)):
     child_parts = []
     # supplier parts built into main - first check all of those and raise errors if they don't exist
     for sub in body['sub']:
-        sachnr_hersteller = find(sub, human_key='SachnummerHersteller')
         artikel_nr = find(sub, human_key='ArtikelNummer') # is the mapping to customerPartId
         chargen_nr = find(sub, human_key='Charge')
 
-        if not sachnr_hersteller and not artikel_nr:
-            msg = f"Sub component needs at least sachnr_hersteller or artikel_nr. Both are not included. {json.dumps(sub, indent=4)}"
+        if not artikel_nr:
+            msg = f"Sub component does not contain ArtikelNummer. {json.dumps(sub, indent=4)}"
             logging.error(msg)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
 
@@ -73,14 +73,10 @@ def post(body: dict = Body(...)):
             logging.error(msg)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
 
-        aas_ids = []
-        if sachnr_hersteller:
-            aas_ids = query_sachnummer(sachnummer_hersteller=sachnr_hersteller, chargen_nr=chargen_nr)
-        elif artikel_nr:
-            aas_ids = query_artikel_nr(artikel_nr=artikel_nr, chargen_nr=chargen_nr)
+        aas_ids = query_customerPartId_partInstanceId(customerPartId=artikel_nr, partInstanceId=chargen_nr)
 
         if len(aas_ids) != 1:
-            msg = f"Could not find exactly 1 item in the registry for sub component. for artikel_nr: {artikel_nr} sachnummer_hersteller: {sachnr_hersteller} chargen_nr: {chargen_nr}"
+            msg = f"Could not find exactly 1 item in the registry for sub component. for artikel_nr: {artikel_nr} sachnummer_hersteller: {chargen_nr} chargen_nr: {chargen_nr}"
             logging.error(msg)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
         sub_aas_id = aas_ids[0]
@@ -112,69 +108,67 @@ def post(body: dict = Body(...)):
     main_cx_id = None
     main_submodel_id_apr = None
     main_aas_ids = query_sachnummer(sachnummer_hersteller=sachnr_hersteller, chargen_nr=chargen_nr)
+    main_aas_id = None
+    main_aas = None
+
     if len(main_aas_ids) > 1:
         msg = f"more than 1 AAS found for main component artikel_nr: {sachnr_hersteller} and chargen_nr: {chargen_nr}"
         logging.error(msg)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
-    if len(main_aas_ids) == 0:
-        logging.info(f"main component does not yet exist in the registry. main: {json.dumps(main)}")
-
-        local_identifiers = {}
-        """
-        Details in the CX Spec:
-        https://confluence.catena-x.net/pages/viewpage.action?pageId=40502166#id-(TRS)%F0%9F%93%9CDataProvisioning(ImplementationSpecification)-SpecificAssetIDsforSerializedParts
-        """
-        if manufacturer_id and manufacturer_id.startswith('BPN'):
-            local_identifiers['manufacturerId'] = manufacturer_id
-        else:
-            if not settings.my_bpn:
-                msg = f"BPN not known. Please consult your application admin to configure env MY_BPN."
-                logging.error(msg)
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
-            local_identifiers['manufacturerId'] = settings.my_bpn
-
-        if sachnr_hersteller:
-            local_identifiers['manufacturerPartId'] = sachnr_hersteller
-
-        if artikel_nr:
-            local_identifiers['customerPartId'] = artikel_nr
-
-        if chargen_nr:
-            local_identifiers['partInstanceId'] = chargen_nr
-
-        main_cx_id = aas_helper.generate_uuid()
-        aas = aas_helper.build_aas(local_identifiers=local_identifiers, cx_id=main_cx_id)
-        main_submodel_id_apr = aas_helper.generate_uuid() # I think we don't need to stre this - we only need this further down to create the edc asset
-        apr_edc_endpoint = reg.prepare_edc_submodel_endpoint_address(aas_id=aas.identification, sm_id=main_submodel_id_apr, bpn=settings.my_bpn)
-        submodel = aas_helper.build_submodel(endpoint=apr_edc_endpoint)
-        aas.submodel_descriptors = [submodel]
-        print(aas)
-        aas_created = reg.create(aas=aas)
-
-        edc_asset_id = f"{aas.identification}-{main_submodel_id_apr}"
-        backend_data_source_endpoint = f"{settings.cs_backend_base_url}{ASSEMBLY_PART_RELATIONSHIP_PATH}/{main_cx_id}"
-        edc_created = create_edc_asset(asset_id=edc_asset_id, endpoint=backend_data_source_endpoint)
-        print(edc_created)
 
     if len(main_aas_ids) == 1:
-        main_aas = reg.lookup_by_aas_id(main_aas_ids[0])
-        spr = reg.get_endpoint_for(aas=main_aas, endpoint_type='serialPartTypization')
-        apr = reg.get_endpoint_for(aas=main_aas, endpoint_type='assemblyPartRelationship')
-        # What to do depends on config
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="We already found an AAS for the main component. The handling of this situation is not implemented yet."
-        )
+        # we just delete it and recreate it - easier for now
+        main_aas_id = main_aas_ids[0]
+        main_aas = reg.lookup_by_aas_id(aas_id=main_aas_id)
+        main_cx_id = aas_helper.get_global_asset_id(aas=main_aas)
+        reg.delete_registry_entry_by_aas_id(main_aas_id)
+
+    # default behavior
+    local_identifiers = {}
+    """
+    Details in the CX Spec:
+    https://confluence.catena-x.net/pages/viewpage.action?pageId=40502166#id-(TRS)%F0%9F%93%9CDataProvisioning(ImplementationSpecification)-SpecificAssetIDsforSerializedParts
+    """
+    if manufacturer_id and manufacturer_id.startswith('BPN'):
+        local_identifiers['manufacturerId'] = manufacturer_id
+    else:
+        if not settings.my_bpn:
+            msg = f"BPN not known. Please consult your application admin to configure env MY_BPN."
+            logging.error(msg)
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
+        local_identifiers['manufacturerId'] = settings.my_bpn
+
+    if sachnr_hersteller:
+        local_identifiers['manufacturerPartId'] = sachnr_hersteller
+
+    if artikel_nr:
+        local_identifiers['customerPartId'] = artikel_nr
+
+    if chargen_nr:
+        local_identifiers['partInstanceId'] = chargen_nr
+
+    if not main_cx_id:
+        main_cx_id = aas_helper.generate_uuid()
+    aas = aas_helper.build_aas(local_identifiers=local_identifiers, aas_id=main_aas_id, cx_id=main_cx_id)
+    main_submodel_id_apr = aas_helper.generate_uuid() # I think we don't need to stre this - we only need this further down to create the edc asset
+    apr_edc_endpoint = reg.prepare_edc_submodel_endpoint_address(aas_id=aas.identification, sm_id=main_submodel_id_apr)
+    submodel = aas_helper.build_submodel(endpoint=apr_edc_endpoint)
+    aas.submodel_descriptors = [submodel]
+    print(aas)
+    aas_result = reg.create(aas=aas)
 
     # now let's prepare the data for the actual submodel endpoint
-    sub_data = json.dumps(child_parts)
-    fn = os.path.join(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR, main_cx_id)
-    with (open(fn, 'w')) as f:
-        f.write(sub_data)
+    store_submodel_data(main_cx_id=main_cx_id, child_parts=child_parts)
+
+    # and finnally create the EDC assets for our endpoint
+    edc_asset_id = f"{aas.identification}-{main_submodel_id_apr}"
+    backend_data_source_endpoint = build_backend_data_source_endpoint(main_cx_id=main_cx_id)
+    edc_result = create_edc_asset(asset_id=edc_asset_id, endpoint=backend_data_source_endpoint)
+    print(edc_result)
 
     result = {
-        'aas_id': aas_created.identification,
-        **edc_created
+        'aas_id': aas_result.identification,
+        **edc_result
     }
     print(result)
     return result
@@ -200,6 +194,14 @@ async def get_assembly_part_relationship(catenaXId: str, content: str = Query(ex
 
     return apr
 
+def store_submodel_data(main_cx_id: str, child_parts):
+    """
+    Store data on disk for later retrieval via the submodel endpoint.
+    """
+    sub_data = json.dumps(child_parts)
+    fn = os.path.join(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR, main_cx_id)
+    with (open(fn, 'w')) as f:
+        f.write(sub_data)
 
 def create_edc_asset(asset_id: str, endpoint: str):
     """
@@ -214,14 +216,37 @@ def create_edc_asset(asset_id: str, endpoint: str):
             backend_auth_key=API_KEY_NAME,
             backend_auth_code=API_KEY
     )
+    if dm.exists(asset_id=asset_id):
+        print('exists already')
     return dm.create_asset_and_friends(asset_id=asset_id, endpoint=endpoint)
 
+def build_backend_data_source_endpoint(main_cx_id):
+    return f"{settings.cs_backend_base_url}{ASSEMBLY_PART_RELATIONSHIP_PATH}/{main_cx_id}"
 
 def get_cx_id_from_aas(aas):
     try:
         return aas['globalAssetId']['value'][0]
     except:
         return None
+
+def query_customerPartId_partInstanceId(customerPartId: str, partInstanceId: str):
+    query = []
+    query.append(
+        {
+            'key': 'customerPartId',
+            'value': customerPartId,
+        }
+    )
+    query.append(
+        {
+            'key': 'partInstanceId',
+            'value': partInstanceId
+        }
+    )
+    aas_ids = reg.discover(query1=query)
+    return aas_ids
+
+
 
 def query_sachnummer(sachnummer_hersteller: str, chargen_nr: str):
     query = []
