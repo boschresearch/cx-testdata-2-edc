@@ -148,7 +148,7 @@ def lookup_by_aas_id(aas_id: str):
         return None
     return r.json()
 
-def get_all(page_size: int = 10, page: int = 1):
+def get_all(page_size: int = 10, page: int = 0):
     """
     """
     session = get_requests_session()
