@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from email.policy import default
 import logging
 import sys
 import time
@@ -86,9 +87,8 @@ def search_for_bpn(bpn: str, csv):
             print(aas_id)
 
 @search.command('stat', help="Statistics - Fetch AAS endpoints and output list with results.")
-@click.option('-p', '--page', default=1, help="The page number in multi-page results.")
-@click.option('-s', '--page-size', default=10, help="The number of items on 1 page.")
-def search_all_stat(page: int, page_size: int):
+@click.option('--bpn', help="For a given BPN", default="")
+def search_all_stat(bpn:str):
     stat = {
         'ok': {},
         'not_ok': {},
@@ -96,12 +96,20 @@ def search_all_stat(page: int, page_size: int):
         'not_ok_aas_ids': [],
         'items': 0,
     }
-    all = registry_handling.get_all(page_size=page_size, page=page)
+    sm_type='assemblyPartRelationship'
+    all = []
+    if bpn:
+        aas_ids = registry_handling.discover_via_bpn(bpn)
+        for aas_id in aas_ids:
+            aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+            all.append(aas)
+    else:
+        all = registry_handling.get_all(page_size=10000000)
     stat['items'] = len(all)
     for aas in all:
         #print(json.dumps(aas, indent=4))
         try:
-            url = registry_handling.get_endpoint_for(aas=aas, endpoint_type='serialPartTypization')
+            url = registry_handling.get_endpoint_for(aas=aas, endpoint_type=sm_type)
             """
             if not "cxdev" in url:
                 print(url)
@@ -113,7 +121,7 @@ def search_all_stat(page: int, page_size: int):
             host = url_parts.netloc
 
             try:
-                data = fetch_for_aas(aas=aas, sm_type='serialPartTypization')
+                data = fetch_for_aas(aas=aas, sm_type=sm_type)
                 #data = fetch_for(aas_id=aas['identification'], sm_type='serialPartTypization', aas_proxy=False)
                 #print(data)
                 stat['ok'][host] = stat['ok'].get(host, 0) + 1
@@ -233,7 +241,7 @@ def fetch_for_aas_type_list(aas, sm_types):
     Relevant for serialPartTypization vs Batch. First match is returned.
     """
     if not aas:
-        raise Exception(f"Could not find aas for aas_id: {aas['identification']}")
+        raise Exception(f"AAS not given")
     url = None
     for sm_type in sm_types:
         url = registry_handling.get_endpoint_for(aas=aas, endpoint_type=sm_type)
