@@ -21,3 +21,4 @@ urns.txt
 notes*.md
 log.log*
 docker-compose*.yaml
+*.csv

@@ -10,8 +10,10 @@ from urllib.parse import urlparse
 import click
 import requests
 from requests.auth import HTTPBasicAuth
+from aas.registry.models.asset_administration_shell_descriptor import AssetAdministrationShellDescriptor
 from edc_handling import prepare_edc_headers_consumer, prepare_edc_headers_provider
 import registry_handling
+import aas_helper
 from dependencies import settings
 import importer
 from aas_helper import extract_edc_information
@@ -60,6 +62,28 @@ def search_all():
     for aas in all:
         print(json.dumps(aas, indent=4))
         input("")
+
+@search.command('bpn', help='Find all Registry items for a given BPN')
+@click.option('--csv', default=False, is_flag=True)
+@click.argument('bpn')
+def search_for_bpn(bpn: str, csv):
+    logging.info(f"Searching for BPN: {bpn}")
+    aas_ids = registry_handling.discover_via_bpn(bpn)
+
+    if csv:
+        # print header
+        print(f"aas_id,cx_id,SerialPartTypizationEndpoint,AssemblyPartRelationshipEndpoint")
+
+    for aas_id in aas_ids:
+        if csv:
+            aas = registry_handling.lookup_by_aas_id(aas_id=aas_id)
+            cx_id = aas_helper.get_global_asset_id(aas)
+            #aas_shell = AssetAdministrationShellDescriptor.parse_obj(aas)
+            spt_endpoint = registry_handling.get_endpoint_for(aas, 'serialPartTypization')
+            apr_endpoint = registry_handling.get_endpoint_for(aas, 'assemblyPartRelationship')
+            print(f"{aas['identification']},{cx_id},{spt_endpoint},{apr_endpoint}")
+        else:
+            print(aas_id)
 
 @search.command('stat', help="Statistics - Fetch AAS endpoints and output list with results.")
 @click.option('-p', '--page', default=1, help="The page number in multi-page results.")
