@@ -78,6 +78,8 @@ class EdcDataManagement():
 
         r = requests.post(f"{self.data_management_base_url}/assets", json=data, headers=self._prepare_data_management_auth())
         if not r.ok:
+            print("Could not create asset.") # TODO: should we try to delete before we create?
+            print(r.content)
             return None
         # TODO: checks
         return asset_props["asset:prop:id"]

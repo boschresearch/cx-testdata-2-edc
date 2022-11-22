@@ -21,7 +21,7 @@ app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"])
 app.include_router(notifications_private)
 
 
-@app.post('/qualityinvestigations/receive')
+@app.post('/qualityinvestigations/receive/xxx')
 def qualityinvestigations_receive(body: QualityNotificationReceiveRequestBody = Body(...)):
     print(body)
     content = json.dumps(body.dict(), indent=4)
@@ -40,20 +40,27 @@ def resolve():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--register-endpoints', help='Endpoint Base URL', default=None)
+    parser.add_argument('--register-endpoints', help='If set, endpoints will be registered as EDC asset.', action='store_true', default=False)
 
     args = parser.parse_args()
     if args.register_endpoints:
-        auth_key = os.getenv('AUTH_KEY', 'X-Api-Key')
-        auth_value = os.getenv('AUTH_VALUE', '123456')
-        edc_data_mgmt_endpoint = os.getenv('EDC_DATA_MGMT_ENDPOINT', 'http://localhost/data-management/')
+        AUTH_HTTP_HEADER_KEY = os.getenv('AUTH_HTTP_HEADER_KEY', 'X-Api-Key')
+        print(f"Using EDC data managment with http header: {AUTH_HTTP_HEADER_KEY}")
+        AUTH_HTTP_HEADER_VALUE = os.getenv('AUTH_HTTP_HEADER_VALUE', '')
+        assert AUTH_HTTP_HEADER_VALUE, "Please set env"
+        print(f"Using EDC data managment with http header: {AUTH_HTTP_HEADER_KEY} and secret key.")
+        EDC_DATA_MGMT_ENDPOINT = os.getenv('EDC_DATA_MGMT_ENDPOINT', '')
+        assert EDC_DATA_MGMT_ENDPOINT, "Please set env"
+        print(f"Using data managment endpoint: {EDC_DATA_MGMT_ENDPOINT}")
+        BACKEND_ENDPOINT_BASE_URL = os.getenv('BACKEND_ENDPOINT_BASE_URL', '')
+        assert BACKEND_ENDPOINT_BASE_URL, "Please set env"
+        print(f"Using public (EDC reachable) backend endpoint base url (this service): {BACKEND_ENDPOINT_BASE_URL}")
         register_endpoints(
-            edc_data_management_endpoint=edc_data_mgmt_endpoint,
-            backend_endpoint_base_url=args.register_endpoints,
-            auth_key=auth_key,
-            auth_value=auth_value,
+            edc_data_management_endpoint=EDC_DATA_MGMT_ENDPOINT,
+            backend_endpoint_base_url=BACKEND_ENDPOINT_BASE_URL,
+            auth_key=AUTH_HTTP_HEADER_KEY,
+            auth_value=AUTH_HTTP_HEADER_VALUE,
         )
-        os._exit()
 
     import uvicorn
     port = os.getenv('PORT', '80')
