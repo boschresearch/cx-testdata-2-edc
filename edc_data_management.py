@@ -44,16 +44,13 @@ class EdcDataManagement():
         }
 
     def create_asset(self, asset_id: str, endpoint: str):
-        data = {
-            "asset": {
-                "properties": {
+        asset_props = {
                     "asset:prop:id": asset_id,
                     "asset:prop:contenttype": "application/json",
                     "asset:prop:policy-id": "use-eu",
                 }
-            },
-            "dataAddress": {
-                "properties": {
+
+        data_address_props = {
                     "type": "HttpData",
                     "proxyMethod": True,
                     "proxyBody": True,
@@ -61,8 +58,19 @@ class EdcDataManagement():
                     #"proxyQueryParams": True,
                     "baseUrl": endpoint
                 }
+
+        return self.create_asset_by_props(asset_props=asset_props, data_address_props=data_address_props)
+    
+    def create_asset_by_props(self, asset_props: dict, data_address_props: dict):
+        data = {
+            "asset": {
+                "properties": asset_props
+            },
+            "dataAddress": {
+                "properties": data_address_props
             }
         }
+
         # add secrets for the backen system if set
         if self.backend_auth_code:
             data['dataAddress']['properties']['authCode'] = self.backend_auth_code
@@ -72,7 +80,7 @@ class EdcDataManagement():
         if not r.ok:
             return None
         # TODO: checks
-        return asset_id
+        return asset_props["asset:prop:id"]
 
     def create_contract_definition(self, policy_id: str, asset_id: str):
         cd_id = str(uuid4())

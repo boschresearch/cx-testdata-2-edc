@@ -90,3 +90,10 @@ ENV_FILE=.env.INT ./cli.py search all # Print the first 10 or so items from the 
 export ENV_FILE=.env.INT
 
 ```
+
+# Dev
+## md to pdf
+```
+sudo apt-get install pandoc texlive-latex-base texlive-fonts-recommended texlive-extra-utils texlive-latex-extra
+pandoc -o text.pdf text.md
+```

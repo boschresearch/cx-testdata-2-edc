@@ -11,9 +11,19 @@ from uuid import UUID
 
 from pydantic import AnyUrl, BaseModel, Field, constr
 
+class MyBaseModel(BaseModel):
+    def dict(self, exclude_none=True, **kwargs):
+        # no config class option for this. needs to be manually changed
+        return super().dict(exclude_none=exclude_none, **kwargs)
+    def json(self, exclude_none=True, **kwargs):
+        return super().dict(exclude_none=exclude_none, **kwargs)
 
-class QualityNotificationGetRequestHeader(BaseModel):
-    notificationId: UUID = Field(
+    class Config:
+        allow_population_by_field_name = True
+        use_enum_values = True
+
+class QualityNotificationGetRequestHeader(MyBaseModel):
+    notificationId: str = Field(
         ...,
         description='A UUIDv4 to uniquely identify a quality notification.',
         example='a7954026-3aff-4b6c-92bf-04671ef2fa46',
@@ -35,7 +45,7 @@ class QualityNotificationGetRequestHeader(BaseModel):
     )
 
 
-class QualityNotificationReceivePayload(BaseModel):
+class QualityNotificationReceivePayload(MyBaseModel):
     information: Optional[constr(max_length=1000)] = Field(
         None, example='Gear boxes loose oil while driving.'
     )
@@ -48,7 +58,7 @@ class QualityNotificationReceivePayload(BaseModel):
     )
 
 
-class QualityNotificationUpdatePayload(BaseModel):
+class QualityNotificationUpdatePayload(MyBaseModel):
     information: Optional[constr(max_length=1000)] = Field(
         None, example='Gear boxes loose oil while driving.'
     )
@@ -76,8 +86,8 @@ class QualityStatus(Enum):
     CLOSED = 'CLOSED'
 
 
-class QualityNotificationReceiveRequestHeader(BaseModel):
-    notificationId: UUID = Field(
+class QualityNotificationReceiveRequestHeader(MyBaseModel):
+    notificationId: str = Field(
         ...,
         description='A UUIDv4 to uniquely identify a quality notification.',
         example='a7954026-3aff-4b6c-92bf-04671ef2fa46',
@@ -99,7 +109,7 @@ class QualityNotificationReceiveRequestHeader(BaseModel):
     )
     classification: QualityClassification
     severity: QualitySeverity
-    relatedNotificationId: Optional[UUID] = Field(
+    relatedNotificationId: Optional[str] = Field(
         None,
         description='A UUIDv4 to uniquely identify a related quality notification.',
         example='7895a39d-c4ef-4b75-b39f-cae8207a262f',
@@ -112,8 +122,8 @@ class QualityNotificationReceiveRequestHeader(BaseModel):
     )
 
 
-class QualityNotificationGetResponseHeader(BaseModel):
-    notificationId: UUID = Field(
+class QualityNotificationGetResponseHeader(MyBaseModel):
+    notificationId: str = Field(
         ...,
         description='A UUIDv4 to uniquely identify a quality notification.',
         example='a7954026-3aff-4b6c-92bf-04671ef2fa46',
@@ -142,8 +152,8 @@ class QualityNotificationGetResponseHeader(BaseModel):
     )
 
 
-class QualityNotificationUpdateRequestHeader(BaseModel):
-    notificationId: UUID = Field(
+class QualityNotificationUpdateRequestHeader(MyBaseModel):
+    notificationId: str = Field(
         ...,
         description='A UUIDv4 to uniquely identify a quality notification. Actually, this value cannot be updated. Rather, it is used to do a plausibility check.',
         example='a7954026-3aff-4b6c-92bf-04671ef2fa46',
@@ -172,11 +182,11 @@ class QualityNotificationUpdateRequestHeader(BaseModel):
     )
 
 
-class QualityNotificationReceiveRequestBody(BaseModel):
+class QualityNotificationReceiveRequestBody(MyBaseModel):
     header: QualityNotificationReceiveRequestHeader
     content: QualityNotificationReceivePayload
 
 
-class QualityNotificationUpdateRequestBody(BaseModel):
+class QualityNotificationUpdateRequestBody(MyBaseModel):
     header: QualityNotificationUpdateRequestHeader
     content: Optional[QualityNotificationUpdatePayload] = None

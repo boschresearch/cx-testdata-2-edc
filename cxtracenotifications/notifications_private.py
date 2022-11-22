@@ -16,6 +16,11 @@ class PlainMessageBody(BaseModel):
         description='The business partner number (BPN) of the receiver. Actually, this value is not used to resolve the quality notification. Rather, it is used to do a plausibility check.',
         example='BPNL00000003BV4H',
     )
+    relatedNotificationId: Optional[str] = Field(
+        None,
+        description='A UUIDv4 to uniquely identify a related quality notification.',
+        example='',
+    )
     information: Optional[constr(max_length=1000)] = Field(
         None, example='Gear boxes loose oil while driving.'
     )
@@ -24,8 +29,6 @@ class PlainMessageBody(BaseModel):
 @router.post('/api/sendplainmessage')
 def send_plain_message(body: PlainMessageBody = Body(...)):
     print(body)
-    base_endpoint = lookup_bpn_endpoint(bpn=body.recipientBPN)
-    endpoint = f"{base_endpoint}/receive"
     msg_id = str(uuid4())
     msg = QualityNotificationReceiveRequestBody(
         header=QualityNotificationReceiveRequestHeader(
@@ -41,15 +44,21 @@ def send_plain_message(body: PlainMessageBody = Body(...)):
             listOfAffectedItems=[],
         )
     )
+    if body.relatedNotificationId:
+        # this is a message as a response. it is part of a 'message thread'
+        msg.header.relatedNotificationId = body.relatedNotificationId
 
     # send the message
     data = msg.dict()
+    base_endpoint = lookup_bpn_endpoint(bpn=body.recipientBPN)
+    endpoint = f"{base_endpoint}/qualityinvestigations/receive"
     r = requests.post(endpoint, json=data)
     if not r.ok:
         logging.error(f"Could not send message to endpoint: {endpoint}. Reason: {r.reason} Content: {r.content}")
     
     # store the message (for later replies / references)
     store(msg_id=msg_id, msg=msg.dict())
+    return { 'notificationId': msg_id }
 
 
 
