@@ -7,7 +7,7 @@ openapi/src
 *.swp
 logs/
 tmp/
-.*
+.env*
 cs-assemblypartrelationship-data/
 *.log
 venv/
