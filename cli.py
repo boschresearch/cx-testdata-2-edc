@@ -87,8 +87,9 @@ def search_for_bpn(bpn: str, csv):
             print(aas_id)
 
 @search.command('stat', help="Statistics - Fetch AAS endpoints and output list with results.")
+@click.option('--sm-type', default='serialPartTypization', help='assemblyPartRelationship default:serialPartTypization')
 @click.option('--bpn', help="For a given BPN", default="")
-def search_all_stat(bpn:str):
+def search_all_stat(bpn:str, sm_type: str):
     stat = {
         'ok': {},
         'not_ok': {},
@@ -96,7 +97,7 @@ def search_all_stat(bpn:str):
         'not_ok_aas_ids': [],
         'items': 0,
     }
-    sm_type='assemblyPartRelationship'
+    #sm_type='assemblyPartRelationship'
     all = []
     if bpn:
         aas_ids = registry_handling.discover_via_bpn(bpn)
@@ -250,13 +251,17 @@ def fetch_for_aas_type_list(aas, sm_types):
     start = time.time()
     url_parts = urlparse(url)
     path_parts = url_parts.path.split('/')
-    bpn = path_parts[1]
-    path = str.join('/', path_parts[2:])
-    #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{path_parts[1]}"
-    #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
-
-    #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
-    wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{bpn}"
+    if path_parts[1].lower().startswith('bpn'):
+        bpn = path_parts[1]
+        path = str.join('/', path_parts[2:])
+        #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{bpn}"
+        # daimler case
+        wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
+    else:
+        # no BPN in path
+        #bpn = path_parts[1]
+        path = str.join('/', path_parts[1:])
+        wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
 
     r = requests.get(wrapper_url, auth=HTTPBasicAuth(settings.wrapper_basic_auth_user, settings.wrapper_basic_auth_password))
     end = time.time()
