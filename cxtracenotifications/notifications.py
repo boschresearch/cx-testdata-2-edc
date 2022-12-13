@@ -21,14 +21,15 @@ app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"])
 app.include_router(notifications_private)
 
 
-@app.post('/qualityinvestigations/receive/xxx')
+@app.post('/qualityinvestigations/receive')
 def qualityinvestigations_receive(body: QualityNotificationReceiveRequestBody = Body(...)):
     print(body)
-    content = json.dumps(body.dict(), indent=4)
+    content = json.dumps(body.json(), indent=4)
+    #content = body.json()
     print(content)
     msg_id = body.header.notificationId
     ref_id = body.header.relatedNotificationId
-    store(msg_id=msg_id, msg=body.dict(), reference_id=ref_id)
+    store(msg_id=msg_id, msg=body.json(), reference_id=ref_id)
 
 #@app.post('/update')
 def update(body: QualityNotificationUpdateRequestBody = Body(...)):

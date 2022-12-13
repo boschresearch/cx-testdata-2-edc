@@ -10,13 +10,18 @@ from typing import List, Optional
 from uuid import UUID
 
 from pydantic import AnyUrl, BaseModel, Field, constr
+from fastapi.encoders import jsonable_encoder
+
 
 class MyBaseModel(BaseModel):
     def dict(self, exclude_none=True, **kwargs):
         # no config class option for this. needs to be manually changed
         return super().dict(exclude_none=exclude_none, **kwargs)
     def json(self, exclude_none=True, **kwargs):
-        return super().dict(exclude_none=exclude_none, **kwargs)
+        result = super().dict(exclude_none=exclude_none, **kwargs)
+        json_result = jsonable_encoder(result) # converts e.g. datetime to string
+        return json_result
+
 
     class Config:
         allow_population_by_field_name = True

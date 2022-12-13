@@ -28,7 +28,7 @@ def register_endpoints(edc_data_management_endpoint: str, backend_endpoint_base_
         "baseUrl": f"{backend_endpoint_base_url}/qualityinvestigations/receive",
         "proxyMethod": True,
         "proxyBody": True,
-        "proxyPath": True,
+        #"proxyPath": True,
         "type": "HttpData"
     }
 

@@ -16,7 +16,7 @@ class PlainMessageBody(BaseModel):
     recipientBPN: str = Field(
         ...,
         description='The business partner number (BPN) of the receiver. Actually, this value is not used to resolve the quality notification. Rather, it is used to do a plausibility check.',
-        example='BPNL00000003BV4H',
+        example='BPNL00000003B5MJ',
     )
     relatedNotificationId: Optional[str] = Field(
         None,
