@@ -254,9 +254,7 @@ def fetch_for_aas_type_list(aas, sm_types):
     if path_parts[1].lower().startswith('bpn'):
         bpn = path_parts[1]
         path = str.join('/', path_parts[2:])
-        #wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{bpn}"
-        # daimler case
-        wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}"
+        wrapper_url = f"{settings.api_wrapper_base_url}/{path}?content=value&extent=withBlobValue&provider-connector-url={url_parts.scheme}://{url_parts.netloc}/{bpn}"
     else:
         # no BPN in path
         #bpn = path_parts[1]
