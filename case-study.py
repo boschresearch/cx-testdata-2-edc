@@ -62,9 +62,10 @@ def post(body: dict = Body(...)):
     for sub in body['sub']:
         artikel_nr = find(sub, human_key='ArtikelNummer') # is the mapping to customerPartId
         chargen_nr = find(sub, human_key='Charge')
+        sachnr_hersteller = find(sub, human_key='SachnummerHersteller')
 
-        if not artikel_nr:
-            msg = f"Sub component does not contain ArtikelNummer. {json.dumps(sub, indent=4)}"
+        if not artikel_nr and not sachnr_hersteller:
+            msg = f"Sub component does not contain ArtikelNummer or SachnummerHersteller. {json.dumps(sub, indent=4)}"
             logging.error(msg)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
 
@@ -73,7 +74,8 @@ def post(body: dict = Body(...)):
             logging.error(msg)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
 
-        aas_ids = query_customerPartId_partInstanceId(customerPartId=artikel_nr, partInstanceId=chargen_nr)
+
+        aas_ids = query_ids(customerPartId=artikel_nr, manufacturerPartId=sachnr_hersteller, partInstanceId=chargen_nr)
 
         if len(aas_ids) != 1:
             msg = f"Could not find exactly 1 item in the registry for sub component. for artikel_nr: {artikel_nr} sachnummer_hersteller: {chargen_nr} chargen_nr: {chargen_nr}"
@@ -228,6 +230,34 @@ def get_cx_id_from_aas(aas):
         return aas['globalAssetId']['value'][0]
     except:
         return None
+
+def query_ids(customerPartId: str, manufacturerPartId:str, partInstanceId: str):
+    query = []
+    if customerPartId:
+        query.append(
+            {
+                'key': 'customerPartId',
+                'value': customerPartId,
+            }
+        )
+
+    if manufacturerPartId:
+        query.append(
+            {
+                'key': 'manufacturerPartId',
+                'value': manufacturerPartId,
+            }
+        )
+
+    if partInstanceId:
+        query.append(
+            {
+                'key': 'partInstanceId',
+                'value': partInstanceId
+            }
+        )
+    aas_ids = reg.discover(query1=query)
+    return aas_ids
 
 def query_customerPartId_partInstanceId(customerPartId: str, partInstanceId: str):
     query = []
