@@ -10,7 +10,7 @@ import shelve
 from fastapi import FastAPI, HTTPException, Query, Security, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from dependencies import settings, DB_CX_ITEMS, ASSEMBLY_PART_RELATIONSHIP_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING, SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, MATERIAL_FOR_RECYCLING_PATH, get_first_match
+from dependencies import SCHEMA_SINGLE_LEVEL_USAGE_LOOKUP_STRING, SINGLE_LEVEL_USAGE_PATH, settings, DB_CX_ITEMS, ASSEMBLY_PART_RELATIONSHIP_PATH, SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING, SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING, SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING, SERIAL_PART_TYPIZATION_ENDPOINT_PATH, MATERIAL_FOR_RECYCLING_PATH, get_first_match
 
 
 app = FastAPI(title="CX Testdata Submodel Endpoint Server for R1")
@@ -78,6 +78,17 @@ async def get_material_for_recycling(catenaXId: str, content: str = Query(exampl
     try:
         item = get_item(catenaXId=catenaXId)
         sm_data = get_sm_for_item(item, schema=SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING)[0]
+        return sm_data
+    except Exception:
+        return {}
+
+@app.get(SINGLE_LEVEL_USAGE_PATH + '/{catenaXId}', dependencies=[Security(check_api_key)])
+async def get_single_level_usage(catenaXId: str, content: str = Query(example='value', default=None), extent: str = Query(example='withBlobValue', default=None)):
+    print(f"get_single_level_usage catenaXId: {catenaXId}")
+    #check_params(content=content, extent=extent)
+    try:
+        item = get_item(catenaXId=catenaXId)
+        sm_data = get_sm_for_item(item, schema=SCHEMA_SINGLE_LEVEL_USAGE_LOOKUP_STRING)[0]
         return sm_data
     except Exception:
         return {}
