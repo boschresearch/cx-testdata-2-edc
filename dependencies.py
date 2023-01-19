@@ -66,6 +66,7 @@ EDC_API_KEY = settings.edc_api_key
 SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING = 'AssemblyPartRelationship'
 SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING = 'SerialPartTypization'
 SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING = 'MaterialForRecycling'
+SCHEMA_SINGLE_LEVEL_USAGE_LOOKUP_STRING = 'SingleLevelUsageAsBuilt'
 SCHEMA_TESTDATA_CONTAINER_LOOKUP_STRING = 'TestDataContainer'
 SCHEMA_AAS_LOOKUP_STRING = '/schema/AAS/' # not used any more
 
@@ -74,6 +75,7 @@ CX_SCHEMA_LOOKUP_STRING = 'urn:bamm:io.catenax.' # has changed too many times. w
 SERIAL_PART_TYPIZATION_ENDPOINT_PATH = '/serialparttypization'
 ASSEMBLY_PART_RELATIONSHIP_PATH = '/assemblypartrelationship'
 MATERIAL_FOR_RECYCLING_PATH = '/materialforrecycling'
+SINGLE_LEVEL_USAGE_PATH = '/singlelevelusageasbuilt'
 
 DB_CX_ITEMS = os.getenv('DB_CX_ITEMS', 'CxItems.db')
 DB_EDC_ASSETS = os.getenv('DB_EDC_ASSETS', 'EdcAssets.db')
@@ -87,6 +89,8 @@ def path_for_schema(schema: str):
         return ASSEMBLY_PART_RELATIONSHIP_PATH
     if SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING in schema:
         return MATERIAL_FOR_RECYCLING_PATH
+    if SCHEMA_SINGLE_LEVEL_USAGE_LOOKUP_STRING in schema:
+        return SINGLE_LEVEL_USAGE_PATH
     return '/notimplementedyet' # default
 
 def idshort_for_schema(schema: str):
@@ -96,7 +100,7 @@ def idshort_for_schema(schema: str):
     """
     try:
         parts = schema.split('#')
-        val = parts[0]
+        val = parts[1]
         result = val[0].lower() + val[1:]
         return result
     except:
