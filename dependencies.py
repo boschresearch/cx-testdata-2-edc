@@ -90,13 +90,17 @@ def path_for_schema(schema: str):
     return '/notimplementedyet' # default
 
 def idshort_for_schema(schema: str):
-    if SCHEMA_SERIAL_PART_TYPIZATION_LOOKUP_STRING in schema:
-        return 'serialPartTypization'
-    if SCHEMA_ASSEMBLY_PART_RELATIONSHIP_LOOKUP_STRING in schema:
-        return 'assemblyPartRelationship'
-    if SCHEMA_MATERIAL_FOR_RECYCLING_LOOKUP_STRING in schema:
-        return 'materialForRecycling'
-    return 'notimplementedyet' # default
+    """
+    Input example: urn:bamm:io.catenax.assembly_part_relationship:1.1.1#AssemblyPartRelationship
+    output: assemblyPartRelationship
+    """
+    try:
+        parts = schema.split('#')
+        val = parts[0]
+        result = val[0].lower() + val[1:]
+        return result
+    except:
+        return 'notimplementedyet'
 
 def testdata_schema_to_real_schema(schema: str):
     """
