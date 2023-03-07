@@ -94,7 +94,7 @@ def post(body: dict = Body(...)):
                     "quantityNumber": 1
                 },
                 "lifecycleContext" : "AsBuilt",
-                "assembledOn" : now.isoformat(),
+                "createdOn" : now.isoformat(),
                 "lastModifiedOn" : now.isoformat(),
                 "childCatenaXId" : sub_cx_id
             }
@@ -200,7 +200,11 @@ def store_submodel_data(main_cx_id: str, child_parts):
     """
     Store data on disk for later retrieval via the submodel endpoint.
     """
-    sub_data = json.dumps(child_parts)
+    data = {
+        "catenaXId": main_cx_id,
+        "childParts": child_parts,
+    }
+    sub_data = json.dumps(data)
     fn = os.path.join(CS_ASSEMBLYPARTRELATIONSHIP_DATA_DIR, main_cx_id)
     with (open(fn, 'w')) as f:
         f.write(sub_data)
