@@ -198,11 +198,7 @@ def prepare_edc_submodel_endpoint_address(aas_id: str, sm_id: str, bpn: str = ''
     """
     # {{providerControlPlaneDockerInternal}}/{{providerBpn}}/{{digitalTwinId}}-{{digitalTwinSubmodelId}}
     """
-    url = f"{settings.endpoint_base_url_external}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
-    if bpn:
-        # old behavior. BPN is not required in the path any more!
-        url = f"{PROVIDER_CONTROL_PLANE_BASE_URL}/{bpn}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
-
+    url = f"{PROVIDER_CONTROL_PLANE_BASE_URL}/{aas_id}-{sm_id}/submodel?content=value&extent=withBlobValue"
     return url
 
 def prepare_submodel_descriptor( cx_id: str, schema: str, aas_id: str, bpn: str):
