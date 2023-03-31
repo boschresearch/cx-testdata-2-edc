@@ -13,6 +13,10 @@ from pycxids.utils.storage import FileStorageEngine
 from pycxids.edc.api import EdcConsumer
 from pycxids.edc.settings import PROVIDER_EDC_BASE_URL, PROVIDER_EDC_API_KEY, RECEIVER_SERVICE_BASE_URL, IDS_PATH
 
+from pycxids.portal.api import Portal
+from pycxids.portal.settings import PORTAL_OAUTH_TOKEN_ENDPOINT, PORTAL_BASE_URL, PORTAL_CLIENT_ID, PORTAL_CLIENT_SECRET
+
+
 STORAGE_DIR = os.getenv('STORAGE_DIR', 'notifications')
 AGREEMENT_CACHE_FN = os.path.join(STORAGE_DIR, 'agreement_cache.json')
 agreement_cache = FileStorageEngine(storage_fn=AGREEMENT_CACHE_FN)
@@ -22,8 +26,8 @@ router = APIRouter(tags=['Private'])
 class PlainMessageBody(BaseModel):
     recipientBPN: str = Field(
         ...,
-        description='The business partner number (BPN) of the receiver. Actually, this value is not used to resolve the quality notification. Rather, it is used to do a plausibility check.',
-        example='BPNL00000003B5MJ',
+        description='The business partner number (BPN) of the receiver. Actually, this value is not used to resolve the quality notification. Rather, it is used to do a plausibility check. Use BPNLconsumer / BPNLprovider for testing with edc-dev-env.',
+        example='BPNLconsumer',
     )
     relatedNotificationId: Optional[str] = Field(
         None,
@@ -116,10 +120,14 @@ def lookup_bpn_endpoint(bpn: str):
     if bpn == 'BPNLprovider':
         return 'http://provider-control-plane:8282'
 
-    if bpn == 'BPNL00000003BV4H':
-        return 'http://localhost:8081'
-    if bpn == 'BPNL00000003B5MJ':
-        return 'http://cxdev.germanywestcentral.cloudapp.azure.com:8185/BPNL00000003B5MJ'
+    # lookup in the portal
+    portal = Portal(
+        portal_base_url=PORTAL_BASE_URL,
+        client_id=PORTAL_CLIENT_ID,
+        client_secret=PORTAL_CLIENT_SECRET,
+        token_url=PORTAL_OAUTH_TOKEN_ENDPOINT,
+    )
+    edc_endpoints = portal.discover_edc_endpoint(bpn=bpn)
 
-    return None
-
+    # TODO: how to deal with multiple endpoints
+    return edc_endpoints[0]
