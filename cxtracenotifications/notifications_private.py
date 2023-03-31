@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import BaseModel, Field, constr
 from typing import Optional
 from uuid import uuid4
@@ -7,8 +7,15 @@ import requests
 from requests.auth import HTTPBasicAuth
 import logging
 
+from settings import QUALITY_INVESTIGATION_NOTIFICATION_ASSET_ID
 from notifications_model import QualityNotificationReceiveRequestBody, QualityNotificationReceiveRequestHeader, QualityClassification, QualitySeverity, QualityNotificationReceivePayload
-from storage import store
+from pycxids.utils.storage import FileStorageEngine
+from pycxids.edc.api import EdcConsumer
+from pycxids.edc.settings import PROVIDER_EDC_BASE_URL, PROVIDER_EDC_API_KEY, RECEIVER_SERVICE_BASE_URL, IDS_PATH
+
+STORAGE_DIR = os.getenv('STORAGE_DIR', 'notifications')
+AGREEMENT_CACHE_FN = os.path.join(STORAGE_DIR, 'agreement_cache.json')
+agreement_cache = FileStorageEngine(storage_fn=AGREEMENT_CACHE_FN)
 
 router = APIRouter(tags=['Private'])
 
@@ -52,30 +59,42 @@ def send_plain_message(body: PlainMessageBody = Body(...)):
 
     # send the message
     data = msg.dict()
-    base_endpoint = lookup_bpn_endpoint(bpn=body.recipientBPN)
-    WRAPPER_BASIC_AUTH_USER = os.getenv('WRAPPER_BASIC_AUTH_USER', 'someuser')
-    WRAPPER_BASIC_AUTH_PASSWORD = os.getenv('WRAPPER_BASIC_AUTH_PASSWORD', 'somepassword')
-    WRAPPER_ENDPOINT_BASE_URL = os.getenv('WRAPPER_ENDPOINT_BASE_URL', '')
+    ids_base = lookup_bpn_endpoint(bpn=body.recipientBPN)
+
+    if not ids_base:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Could not lookup IDS endpoint for given BPN: {body.recipientBPN}")
+
+    consumer = EdcConsumer(
+            edc_data_managment_base_url=PROVIDER_EDC_BASE_URL,
+            auth_key=PROVIDER_EDC_API_KEY,
+            token_receiver_service_base_url=RECEIVER_SERVICE_BASE_URL,
+        ) # provider / consumer is no difference here, just relevant how the ENV vars are named. We use 'provider' here...
+
+    ids_endpoint = ids_base
+    if not IDS_PATH in ids_endpoint:
+        ids_endpoint = f"{ids_base}{IDS_PATH}"
+    asset_id = QUALITY_INVESTIGATION_NOTIFICATION_ASSET_ID
+    cache_key = f"{ids_endpoint}{asset_id}"
+    #agreement_id = agreement_cache.get(cache_key, None)
+    agreement_id = None # disable cache for now
+    if not agreement_id:
+        # negotiate
+        agreement_id = consumer.negotiate_contract_and_wait_with_asset(provider_ids_endpoint=ids_endpoint, asset_id=asset_id)
+        agreement_cache.put(cache_key, agreement_id)
+
+    provider_edr = consumer.transfer_and_wait_provider_edr(provider_ids_endpoint=ids_endpoint, asset_id=asset_id, agreement_id=agreement_id)
 
     r = None
     url = ''
-    if not WRAPPER_ENDPOINT_BASE_URL:
+    if False:
         # (local dev) without EDC
         print("Sending notification in local dev / WITHOUT EDC. Please set WRAPPER_ENDPOINT_BASE_URL if EDC is required!")
         url = f"{base_endpoint}/qualityinvestigations/receive"
         r = requests.post(url, json=data)
     else:
         # probably default case. going via api-wrapper through the EDC
-        print(f"Using WRAPPER_BASIC_AUTH_USER: {WRAPPER_BASIC_AUTH_USER} Change via env var")
-        print("Using secret WRAPPER_BASIC_AUTH_PASSWORD. Change via env var")
-        api_wrapper = WRAPPER_ENDPOINT_BASE_URL
-        if not api_wrapper.endswith('/api/service'):
-            api_wrapper = api_wrapper + '/api/service'
-            print(f"Updated api-wrapper url: {api_wrapper}")
-        # bug in api-wrapper. must end with '/submodel' or something else
-        url = f"{api_wrapper}/qualityinvestigationnotification-receive/xxx?provider-connector-url={base_endpoint}"
-        auth = HTTPBasicAuth(username=WRAPPER_BASIC_AUTH_USER, password=WRAPPER_BASIC_AUTH_PASSWORD)
-        r = requests.post(url, auth=auth, json=data)
+        url = f"{provider_edr['baseUrl']}"
+        r = requests.post(url, json=data, headers={'Authorization': provider_edr['authCode']})
 
 
     if not r.ok:
@@ -84,14 +103,23 @@ def send_plain_message(body: PlainMessageBody = Body(...)):
     print(f"{r.status_code}: {r.content}")
     
     # store the message (for later replies / references)
-    store(msg_id=msg_id, msg=msg.dict())
+    msg_storage_fn = os.path.join(STORAGE_DIR, msg_id)
+    msg_storage = FileStorageEngine(storage_fn=msg_storage_fn)
+    msg_storage.put(msg_id, msg.dict())
     return { 'notificationId': msg_id }
 
 
 
 def lookup_bpn_endpoint(bpn: str):
+    if bpn == 'BPNLconsumer':
+        return 'http://consumer-control-plane:8282'
+    if bpn == 'BPNLprovider':
+        return 'http://provider-control-plane:8282'
+
     if bpn == 'BPNL00000003BV4H':
         return 'http://localhost:8081'
     if bpn == 'BPNL00000003B5MJ':
         return 'http://cxdev.germanywestcentral.cloudapp.azure.com:8185/BPNL00000003B5MJ'
+
+    return None
 

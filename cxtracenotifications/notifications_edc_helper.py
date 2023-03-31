@@ -1,40 +1,35 @@
 
 import requests
 from settings import settings
-from edc_data_management import EdcDataManagement
+from pycxids.edc.api import EdcProvider
 
-def register_endpoints(edc_data_management_endpoint: str, backend_endpoint_base_url: str, auth_key: str='', auth_value: str = ''):
+from settings import QUALITY_INVESTIGATION_NOTIFICATION_ASSET_ID
+
+def register_endpoints(edc_data_management_endpoint: str, backend_endpoint_base_url: str, api_key: str):
     """
     Registers the required EDC endpoints
 
     Currtly only the:
     - qualityinvestigationnotification-receive
     """
-    edc_mgmt = EdcDataManagement(
-        data_management_base_url=edc_data_management_endpoint,
-        data_management_auth_key=auth_key,
-        data_management_auth_code=auth_value,
+    provider = EdcProvider(
+        edc_data_managment_base_url=edc_data_management_endpoint,
+        auth_key=api_key,
     )
-    #edc_mgmt.exists(asset_id='')
+
+    asset_id = QUALITY_INVESTIGATION_NOTIFICATION_ASSET_ID
     qualityinvestigationnotification_receive_asset_props = {
-        "asset:prop:id": "qualityinvestigationnotification-receive",
+        "asset:prop:id": asset_id,
         "asset:prop:name": "Asset to receive quality investigations",
         "asset:prop:contenttype": "application/json",
         "asset:prop:notificationtype": "qualityinvestigation",
         "asset:prop:notificationmethod": "receive"
     }
 
-    qualityinvestigationnotification_receive_data_address_props = {
-        "baseUrl": f"{backend_endpoint_base_url}/qualityinvestigations/receive",
-        "proxyMethod": True,
-        "proxyBody": True,
-        #"proxyPath": True,
-        "type": "HttpData"
-    }
+    base_url = f"{backend_endpoint_base_url}/qualityinvestigations/receive"
 
-    edc_mgmt.create_asset_by_props(
-        asset_props=qualityinvestigationnotification_receive_asset_props,
-        data_address_props=qualityinvestigationnotification_receive_data_address_props
-    )
-    policy_id = edc_mgmt.create_policy(asset_id=qualityinvestigationnotification_receive_asset_props["asset:prop:id"])
-    cd_id = edc_mgmt.create_contract_definition(policy_id=policy_id, asset_id=qualityinvestigationnotification_receive_asset_props["asset:prop:id"])
+    asset_created, _, _ = provider.create_asset_and_friends(base_url=base_url, asset_id=asset_id, proxyMethod=True, proxyBody=True,
+        asset_additional_props=qualityinvestigationnotification_receive_asset_props)
+
+    if not asset_id == asset_created:
+        print(f"Could not create asset: {asset_id} Result: {asset_created} (maybe it already exists? Data address not updated!)")

@@ -9,6 +9,7 @@ from notifications_model import QualityNotificationReceiveRequestBody, QualityNo
 from storage import store
 from notifications_edc_helper import register_endpoints
 
+from pycxids.edc.settings import PROVIDER_EDC_BASE_URL, PROVIDER_EDC_API_KEY
 
 app = FastAPI(title="Catena-X Traceability Notifications")
 
@@ -45,23 +46,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if args.register_endpoints:
-        AUTH_HTTP_HEADER_KEY = os.getenv('AUTH_HTTP_HEADER_KEY', 'X-Api-Key')
-        print(f"Using EDC data managment with http header: {AUTH_HTTP_HEADER_KEY}")
-        AUTH_HTTP_HEADER_VALUE = os.getenv('AUTH_HTTP_HEADER_VALUE', '')
-        assert AUTH_HTTP_HEADER_VALUE, "Please set env"
-        print(f"Using EDC data managment with http header: {AUTH_HTTP_HEADER_KEY} and secret key.")
-        EDC_DATA_MGMT_ENDPOINT = os.getenv('EDC_DATA_MGMT_ENDPOINT', '')
-        assert EDC_DATA_MGMT_ENDPOINT, "Please set env"
-        print(f"Using data managment endpoint: {EDC_DATA_MGMT_ENDPOINT}")
+        print(f"Using EDC data managment with api key PROVIDER_EDC_API_KEY: {PROVIDER_EDC_API_KEY}")
+        print(f"Using data managment endpoint PROVIDER_EDC_BASE_URL: {PROVIDER_EDC_BASE_URL}")
+
         BACKEND_ENDPOINT_BASE_URL = os.getenv('BACKEND_ENDPOINT_BASE_URL', '')
         assert BACKEND_ENDPOINT_BASE_URL, "Please set env"
         print(f"Using public (EDC reachable) backend endpoint base url (this service): {BACKEND_ENDPOINT_BASE_URL}")
         register_endpoints(
-            edc_data_management_endpoint=EDC_DATA_MGMT_ENDPOINT,
+            edc_data_management_endpoint=PROVIDER_EDC_BASE_URL,
             backend_endpoint_base_url=BACKEND_ENDPOINT_BASE_URL,
-            auth_key=AUTH_HTTP_HEADER_KEY,
-            auth_value=AUTH_HTTP_HEADER_VALUE,
-        )
+            api_key=PROVIDER_EDC_API_KEY,
+            )
 
     import uvicorn
     port = os.getenv('PORT', '80')
