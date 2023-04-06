@@ -10,9 +10,8 @@ from typing import List, Optional
 from uuid import UUID
 
 from pydantic import AnyUrl, BaseModel, Field, constr
-from fastapi.encoders import jsonable_encoder
 
-from models import MyBaseModel
+from pycxids.models.base_model import MyBaseModel
 
 class QualityNotificationGetRequestHeader(MyBaseModel):
     notificationId: str = Field(

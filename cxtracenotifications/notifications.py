@@ -1,3 +1,9 @@
+# Copyright (c) 2023 - for information on the respective copyright owner
+# see the NOTICE file and/or the repository
+# https://github.com/boschresearch/cx-testdata-2-edc
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import json
 import argparse
@@ -8,6 +14,9 @@ from notifications_private import router as notifications_private
 from notifications_model import QualityNotificationReceiveRequestBody, QualityNotificationUpdateRequestBody
 from storage import store
 from notifications_edc_helper import register_endpoints
+
+from models_unique_push import UniqueIdPushNotificationReceiveRequestBody
+from unique_push import create_twin_and_edc_asset
 
 from pycxids.edc.settings import PROVIDER_EDC_BASE_URL, PROVIDER_EDC_API_KEY
 
@@ -31,6 +40,14 @@ def qualityinvestigations_receive(body: QualityNotificationReceiveRequestBody = 
     msg_id = body.header.notificationId
     ref_id = body.header.relatedNotificationId
     store(msg_id=msg_id, msg=body.json(), reference_id=ref_id)
+
+@app.post('/uniqueidpush/receive')
+def uniquepush_receive(body: UniqueIdPushNotificationReceiveRequestBody):
+    sender_bpn = body.header.senderBPN
+    sender_edc = body.header.senderAddress # we don't need a BPN -> EDC looku if this is given
+    for item in body.content.listOfItems:
+        cx_id = item.catenaxId
+        create_twin_and_edc_asset(cx_id=cx_id, push_to_edc_endpoint=sender_edc)
 
 #@app.post('/update')
 def update(body: QualityNotificationUpdateRequestBody = Body(...)):

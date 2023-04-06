@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import AnyUrl, Field, constr
 
-from models import MyBaseModel
+from pycxids.models.base_model import MyBaseModel
 
 
 class UniqueIdPushClassification(Enum):

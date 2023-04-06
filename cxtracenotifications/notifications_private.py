@@ -1,6 +1,12 @@
+# Copyright (c) 2023 - for information on the respective copyright owner
+# see the NOTICE file and/or the repository
+# https://github.com/boschresearch/cx-testdata-2-edc
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from fastapi import APIRouter, Body, HTTPException, status
-from pydantic import BaseModel, Field, constr
+from pydantic import Field, constr
 from typing import Optional
 from uuid import uuid4
 import requests
@@ -16,6 +22,7 @@ from pycxids.edc.settings import PROVIDER_EDC_BASE_URL, PROVIDER_EDC_API_KEY, RE
 from pycxids.portal.api import Portal
 from pycxids.portal.settings import PORTAL_OAUTH_TOKEN_ENDPOINT, PORTAL_BASE_URL, PORTAL_CLIENT_ID, PORTAL_CLIENT_SECRET
 
+from pycxids.models.base_model import MyBaseModel
 
 STORAGE_DIR = os.getenv('STORAGE_DIR', 'notifications')
 AGREEMENT_CACHE_FN = os.path.join(STORAGE_DIR, 'agreement_cache.json')
@@ -23,7 +30,7 @@ agreement_cache = FileStorageEngine(storage_fn=AGREEMENT_CACHE_FN)
 
 router = APIRouter(tags=['Private'])
 
-class PlainMessageBody(BaseModel):
+class PlainMessageBody(MyBaseModel):
     recipientBPN: str = Field(
         ...,
         description='The business partner number (BPN) of the receiver. Actually, this value is not used to resolve the quality notification. Rather, it is used to do a plausibility check. Use BPNLconsumer / BPNLprovider for testing with edc-dev-env.',

@@ -1,4 +1,10 @@
 
+# Copyright (c) 2023 - for information on the respective copyright owner
+# see the NOTICE file and/or the repository
+# https://github.com/boschresearch/cx-testdata-2-edc
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import requests
 from settings import settings
 from pycxids.edc.api import EdcProvider
