@@ -1,0 +1,22 @@
+@media print {
+    * {
+        visibility: hidden;
+    }
+
+    .print,
+    .print table * {
+        visibility: visible;
+    }
+
+    .print_top_right_corner {
+        position: absolute;
+        top: -50px;
+        right: 0;
+    }
+
+    /* disable header and footer */
+    @page {
+        margin: 0;
+    }
+
+}
