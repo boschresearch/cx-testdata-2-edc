@@ -167,7 +167,7 @@ def upsert_asset(cx_id:str, schema:str):
     """
     sm_id = upsert_sm_id(cx_id=cx_id, schema=schema)
     asset_id = prepare_asset_id(cx_id=cx_id, submodel_id=sm_id)
-
+    """
     existing_asset_id = get_asset(asset_id=asset_id)
     if existing_asset_id:
         logging.info(f"EDC asset already exists for cx_id: {cx_id} asset_id: {asset_id}")
@@ -175,6 +175,7 @@ def upsert_asset(cx_id:str, schema:str):
         upsert_policy(asset_id=asset_id)
 
         return existing_asset_id
+    """
 
     # or we create a new one in EDC
     asset = create_asset(cx_id=cx_id, asset_id=asset_id, schema=schema)
